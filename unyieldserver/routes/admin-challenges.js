@@ -4,6 +4,7 @@ const { authenticate } = require('../middleware/auth');
 const { requireChallengeMaster, requireChallengeModerator, logAdminAction } = require('../middleware/admin');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { notifyNewChallenge } = require('../services/notificationService');
+const { calculateStrengthRatio, getWeightClass } = require('../src/utils/strengthRatio');
 
 const router = express.Router();
 
@@ -661,6 +662,59 @@ router.post('/submissions/:id/verify',
             },
           },
           data: updateData,
+        });
+      }
+
+      // Recalculate user's aggregate strength ratio for leaderboard ranking
+      // This ensures approved submissions update the user's leaderboard position
+      const user = await prisma.user.findUnique({
+        where: { id: submission.userId },
+        select: { id: true, weight: true },
+      });
+
+      // If this is an exercise challenge, convert it into a standard Workout
+      // so the user's lift appears in logs and naturally contributes to leaderboard stats
+      if (submission.challenge?.challengeType === 'exercise' && submission.exercise) {
+        let submissionStrengthRatio = 0;
+        if (user?.weight && user.weight > 0 && submission.weight && submission.reps) {
+          const weightLifted = submission.reps * submission.weight;
+          submissionStrengthRatio = calculateStrengthRatio({
+            weightLifted,
+            bodyweight: user.weight,
+            reps: submission.reps
+          });
+        }
+
+        await prisma.workout.create({
+          data: {
+            userId: submission.userId,
+            exercise: submission.exercise,
+            reps: submission.reps || 0,
+            weight: submission.weight || null,
+            duration: submission.duration || null,
+            points: 0,
+            strengthRatio: submissionStrengthRatio,
+            notes: `Challenge Submission: ${submission.challenge.title}`,
+            date: new Date(),
+          }
+        });
+      }
+
+      if (user?.weight && user.weight > 0) {
+        const allWorkouts = await prisma.workout.findMany({
+          where: { userId: submission.userId },
+          select: { strengthRatio: true },
+        });
+
+        const totalStrengthRatio = allWorkouts.reduce((sum, w) => sum + (w.strengthRatio || 0), 0);
+        const weightClass = getWeightClass(user.weight);
+
+        await prisma.user.update({
+          where: { id: submission.userId },
+          data: {
+            strengthRatio: totalStrengthRatio,
+            weightClass,
+          },
         });
       }
     }

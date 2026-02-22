@@ -4,6 +4,10 @@ const { authenticate, optionalAuth } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { deleteVideo } = require('../services/objectStorage');
 const { calculateStrengthRatio, getWeightClass } = require('../src/utils/strengthRatio');
+const {
+  resolveCompetitiveLiftId,
+  getCompetitiveLiftLabel,
+} = require('../src/constants/competitiveLifts');
 
 const router = express.Router();
 
@@ -97,8 +101,15 @@ router.get('/my-submissions', authenticate, asyncHandler(async (req, res) => {
 
 // GET /api/challenges - Get all active challenges
 router.get('/', optionalAuth, asyncHandler(async (req, res) => {
-  const { region = 'global', includeExpired = 'false' } = req.query;
+  const {
+    region = 'global',
+    includeExpired = 'false',
+    competitiveOnly = 'false',
+    exercise,
+  } = req.query;
   const now = new Date();
+  const exerciseFilterId = resolveCompetitiveLiftId(exercise);
+  const isCompetitiveOnly = competitiveOnly === 'true';
 
   // Normalize region to lowercase for comparison
   const normalizedRegion = region.toLowerCase();
@@ -118,16 +129,47 @@ router.get('/', optionalAuth, asyncHandler(async (req, res) => {
     where.endDate = { gt: now };
   }
 
+  if (isCompetitiveOnly || exerciseFilterId) {
+    where.challengeType = 'exercise';
+  }
+
   let challenges = await prisma.challenge.findMany({
     where,
     orderBy: { createdAt: 'desc' },
   });
 
+  if (isCompetitiveOnly || exerciseFilterId) {
+    challenges = challenges.filter((challenge) => {
+      const normalizedExercises = (challenge.exercises || [])
+        .map((value) => resolveCompetitiveLiftId(value))
+        .filter(Boolean);
+
+      if (exerciseFilterId) {
+        return normalizedExercises.includes(exerciseFilterId);
+      }
+
+      return normalizedExercises.length > 0;
+    });
+  }
+
   console.log('[CHALLENGES] Query params:', { region, includeExpired, normalizedRegion });
   console.log('[CHALLENGES] Found challenges:', challenges.length);
   console.log('[CHALLENGES] Challenge regions:', challenges.map(c => ({ id: c.id, title: c.title, regionScope: c.regionScope, isActive: c.isActive, endDate: c.endDate })));
 
+  const challengeIds = challenges.map((challenge) => challenge.id);
+  const participantCounts = challengeIds.length > 0
+    ? await prisma.userChallenge.groupBy({
+        by: ['challengeId'],
+        where: { challengeId: { in: challengeIds } },
+        _count: { challengeId: true },
+      })
+    : [];
+  const participantCountMap = new Map(
+    participantCounts.map((entry) => [entry.challengeId, entry._count.challengeId])
+  );
+
   // Add user progress if authenticated
+  let ucMap = new Map();
   if (req.user) {
     const userChallenges = await prisma.userChallenge.findMany({
       where: {
@@ -136,14 +178,25 @@ router.get('/', optionalAuth, asyncHandler(async (req, res) => {
       },
     });
 
-    const ucMap = new Map(userChallenges.map(uc => [uc.challengeId, uc]));
+    ucMap = new Map(userChallenges.map(uc => [uc.challengeId, uc]));
+  }
 
-    challenges = challenges.map(challenge => ({
+  challenges = challenges.map((challenge) => {
+    const normalizedExercises = (challenge.exercises || [])
+      .map((value) => resolveCompetitiveLiftId(value))
+      .filter(Boolean);
+    const primaryExercise = normalizedExercises[0] || null;
+
+    return {
       id: challenge.id,
       title: challenge.title,
       description: challenge.description,
       challengeType: challenge.challengeType,
       exercises: challenge.exercises,
+      normalizedExercises,
+      primaryExercise,
+      primaryExerciseName: getCompetitiveLiftLabel(primaryExercise),
+      isCompetitiveLiftChallenge: normalizedExercises.length > 0,
       customMetricName: challenge.customMetricName,
       metricType: challenge.metricType,
       target: challenge.target,
@@ -161,11 +214,12 @@ router.get('/', optionalAuth, asyncHandler(async (req, res) => {
       isActive: challenge.isActive,
       createdAt: challenge.createdAt,
       updatedAt: challenge.updatedAt,
+      participantCount: participantCountMap.get(challenge.id) || 0,
       joined: ucMap.has(challenge.id),
       progress: ucMap.get(challenge.id)?.progress || 0,
       completed: ucMap.get(challenge.id)?.completed || false,
-    }));
-  }
+    };
+  });
 
   res.json({
     success: true,
@@ -210,6 +264,15 @@ router.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
     progress: 0,
     completed: false,
   };
+
+  const normalizedExercises = (challenge.exercises || [])
+    .map((value) => resolveCompetitiveLiftId(value))
+    .filter(Boolean);
+  const primaryExercise = normalizedExercises[0] || null;
+  responseData.normalizedExercises = normalizedExercises;
+  responseData.primaryExercise = primaryExercise;
+  responseData.primaryExerciseName = getCompetitiveLiftLabel(primaryExercise);
+  responseData.isCompetitiveLiftChallenge = normalizedExercises.length > 0;
 
   // Add user progress if authenticated
   if (req.user) {
@@ -401,8 +464,12 @@ router.post('/:id/submit', authenticate, asyncHandler(async (req, res) => {
   }
 
   // Validate exercise if required
+  const normalizedExercise = resolveCompetitiveLiftId(exercise) || exercise;
   if (challenge.challengeType === 'exercise') {
-    if (!exercise || !challenge.exercises.includes(exercise)) {
+    const allowedExercises = new Set(
+      (challenge.exercises || []).map((value) => resolveCompetitiveLiftId(value) || value)
+    );
+    if (!normalizedExercise || !allowedExercises.has(normalizedExercise)) {
       throw new AppError('Invalid exercise for this challenge', 400);
     }
   }
@@ -416,13 +483,13 @@ router.post('/:id/submit', authenticate, asyncHandler(async (req, res) => {
   let value = 0;
   switch (challenge.metricType) {
     case 'reps':
-      value = reps || 0;
+      value = Math.round(reps || 0);
       break;
     case 'weight':
-      value = weight || 0;
+      value = Math.round(weight || 0);
       break;
     case 'duration':
-      value = duration || 0;
+      value = Math.round(duration || 0);
       break;
     case 'workouts':
       value = 1; // Each submission counts as 1 workout
@@ -446,7 +513,7 @@ router.post('/:id/submit', authenticate, asyncHandler(async (req, res) => {
     data: {
       userId: req.user.id,
       challengeId: challenge.id,
-      exercise,
+      exercise: normalizedExercise,
       reps: reps || 0,
       weight: weight || 0,
       duration: duration || 0,
@@ -480,7 +547,7 @@ router.post('/:id/submit', authenticate, asyncHandler(async (req, res) => {
   await prisma.workout.create({
     data: {
       userId: req.user.id,
-      exercise: exercise || 'Challenge',
+      exercise: normalizedExercise || 'Challenge',
       reps: reps || 0,
       weight: weight || 0,
       duration: duration || 0,
@@ -620,11 +687,6 @@ router.delete('/submissions/:id', authenticate, asyncHandler(async (req, res) =>
   // Must be the owner of the submission to delete it
   if (submission.userId !== req.user.id) {
     throw new AppError('You can only delete your own challenge submissions', 403);
-  }
-
-  // Only allow deletion of pending or rejected submissions (not approved ones)
-  if (submission.status === 'approved') {
-    throw new AppError('Cannot delete an approved submission', 400);
   }
 
   // Delete from Object Storage

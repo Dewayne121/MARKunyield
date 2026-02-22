@@ -153,11 +153,11 @@ export default function WorkoutHomeScreen({ navigation }) {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
+          <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>QUICK ACTIONS</Text>
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickActionCard} onPress={handleQuickStart}>
               <View style={styles.quickActionIcon}>
-                <Ionicons name="flash" size={28} color="#fff" />
+                <Ionicons name="flash" size={24} color={theme.primary} />
               </View>
               <Text style={styles.quickActionTitle}>Quick Workout</Text>
               <Text style={styles.quickActionSubtitle}>Generate instantly</Text>
@@ -168,7 +168,7 @@ export default function WorkoutHomeScreen({ navigation }) {
               onPress={() => navigation.navigate('TemplateBuilder')}
             >
               <View style={styles.quickActionIcon}>
-                <Ionicons name="add-circle" size={28} color="#fff" />
+                <Ionicons name="add" size={24} color={theme.primary} />
               </View>
               <Text style={styles.quickActionTitle}>Create Template</Text>
               <Text style={styles.quickActionSubtitle}>Build custom workout</Text>
@@ -218,19 +218,19 @@ export default function WorkoutHomeScreen({ navigation }) {
                     style={styles.templateButton}
                     onPress={() => handleStartWorkout(template.id)}
                   >
-                    <Ionicons name="play" size={18} color="#fff" />
+                    <Ionicons name="play" size={18} color={theme.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.templateButton, styles.templateButtonEdit]}
                     onPress={() => navigation.navigate('TemplateBuilder', { templateId: template.id })}
                   >
-                    <Ionicons name="create-outline" size={18} color="#fff" />
+                    <Ionicons name="create-outline" size={18} color="#888" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.templateButton, styles.templateButtonDelete]}
                     onPress={() => handleDeleteTemplate(template.id)}
                   >
-                    <Ionicons name="trash-outline" size={18} color="#fff" />
+                    <Ionicons name="trash-outline" size={18} color="#ff003c" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -311,14 +311,18 @@ function createStyles(theme, isDark) {
     scrollContent: {
       padding: 16,
     },
+
+    // Active Session Banner - Tactical Style
     activeSessionBanner: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: theme.primary,
-      borderRadius: 16,
+      borderRadius: 6,
       padding: 16,
       marginBottom: 20,
+      borderLeftWidth: 4,
+      borderLeftColor: '#fff',
     },
     activeSessionLeft: {
       flexDirection: 'row',
@@ -330,16 +334,20 @@ function createStyles(theme, isDark) {
     },
     activeSessionTitle: {
       fontSize: 16,
-      fontWeight: '700',
+      fontWeight: '800',
       color: '#fff',
+      letterSpacing: 0.5,
     },
     activeSessionSubtitle: {
-      fontSize: 12,
+      fontSize: 11,
       color: 'rgba(255,255,255,0.7)',
       marginTop: 2,
+      fontWeight: '600',
     },
+
+    // Sections
     section: {
-      marginBottom: 24,
+      marginBottom: 28,
     },
     sectionHeader: {
       flexDirection: 'row',
@@ -349,89 +357,108 @@ function createStyles(theme, isDark) {
     },
     sectionTitle: {
       fontSize: 14,
-      fontWeight: '700',
-      color: '#fff',
-      letterSpacing: 1,
+      fontWeight: '900',
+      color: '#555',
+      letterSpacing: 2,
+    },
+    sectionTitleSpaced: {
+      marginBottom: 12,
     },
     seeAll: {
-      fontSize: 12,
-      fontWeight: '600',
+      fontSize: 11,
+      fontWeight: '700',
       color: theme.primary,
+      letterSpacing: 0.5,
     },
+
+    // Quick Actions - Tactical Style
     quickActions: {
       flexDirection: 'row',
       gap: 12,
     },
     quickActionCard: {
       flex: 1,
-      backgroundColor: '#1a1a1a',
-      borderRadius: 16,
+      backgroundColor: '#161616',
+      borderRadius: 6,
+      borderTopWidth: 2,
+      borderTopColor: '#333',
       padding: 16,
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
     },
     quickActionIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: theme.primary,
+      width: 48,
+      height: 48,
+      borderRadius: 4,
+      backgroundColor: 'rgba(155, 44, 44, 0.2)',
+      borderWidth: 2,
+      borderColor: theme.primary,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 12,
     },
     quickActionTitle: {
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '800',
       color: '#fff',
       marginBottom: 4,
+      letterSpacing: 0.5,
     },
     quickActionSubtitle: {
-      fontSize: 11,
-      color: '#888',
+      fontSize: 10,
+      color: '#666',
       textAlign: 'center',
+      letterSpacing: 0.5,
     },
+
+    // Empty State - Tactical Style
     emptyState: {
-      backgroundColor: '#1a1a1a',
-      borderRadius: 16,
+      backgroundColor: '#121212',
+      borderRadius: 6,
+      borderTopWidth: 2,
+      borderTopColor: '#333',
       padding: 32,
       alignItems: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderStyle: 'dashed',
     },
     emptyText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#888',
+      fontSize: 14,
+      fontWeight: '800',
+      color: '#666',
       marginTop: 16,
+      letterSpacing: 0.5,
     },
     emptySubtext: {
-      fontSize: 13,
-      color: '#666',
+      fontSize: 12,
+      color: '#444',
       marginTop: 4,
       marginBottom: 20,
     },
     emptyButton: {
-      backgroundColor: theme.primary,
-      paddingHorizontal: 24,
+      backgroundColor: '#121212',
+      borderWidth: 2,
+      borderColor: theme.primary,
+      paddingHorizontal: 20,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 6,
     },
     emptyButtonText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: '#fff',
+      fontSize: 12,
+      fontWeight: '800',
+      color: theme.primary,
+      letterSpacing: 1,
     },
+
+    // Template Cards - Tactical Style
     templateCard: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: '#1a1a1a',
-      borderRadius: 14,
+      backgroundColor: '#161616',
+      borderRadius: 4,
       padding: 14,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      marginBottom: 8,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.primary,
     },
     templateLeft: {
       flexDirection: 'row',
@@ -439,59 +466,71 @@ function createStyles(theme, isDark) {
       flex: 1,
     },
     templateIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
+      width: 40,
+      height: 40,
+      borderRadius: 4,
       backgroundColor: 'rgba(155, 44, 44, 0.15)',
+      borderWidth: 1,
+      borderColor: '#333',
       justifyContent: 'center',
       alignItems: 'center',
     },
     templateInitials: {
       fontSize: 12,
-      fontWeight: '800',
-      color: '#9b2c2c',
+      fontWeight: '900',
+      color: theme.primary,
+      letterSpacing: 0.5,
     },
     templateInfo: {
       marginLeft: 12,
+      flex: 1,
     },
     templateName: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 14,
+      fontWeight: '800',
       color: '#fff',
+      letterSpacing: 0.3,
     },
     templateMeta: {
-      fontSize: 12,
-      color: '#888',
+      fontSize: 11,
+      color: '#666',
       marginTop: 2,
+      fontWeight: '600',
     },
     templateActions: {
       flexDirection: 'row',
-      gap: 8,
+      gap: 6,
     },
     templateButton: {
       width: 36,
       height: 36,
-      borderRadius: 10,
-      backgroundColor: theme.primary,
+      borderRadius: 4,
+      backgroundColor: 'rgba(155, 44, 44, 0.2)',
+      borderWidth: 1,
+      borderColor: theme.primary,
       justifyContent: 'center',
       alignItems: 'center',
     },
     templateButtonEdit: {
-      backgroundColor: '#3B82F6',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderColor: '#333',
     },
     templateButtonDelete: {
-      backgroundColor: '#ff003c',
+      backgroundColor: 'rgba(255, 0, 60, 0.1)',
+      borderColor: '#ff003c',
     },
+
+    // Session Cards - Tactical Style
     sessionCard: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: '#1a1a1a',
-      borderRadius: 14,
+      backgroundColor: '#161616',
+      borderRadius: 4,
       padding: 14,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#333',
     },
     sessionLeft: {
       flexDirection: 'row',
@@ -501,35 +540,45 @@ function createStyles(theme, isDark) {
     sessionIcon: {
       width: 36,
       height: 36,
-      borderRadius: 10,
-      backgroundColor: 'rgba(155, 44, 44, 0.15)',
+      borderRadius: 4,
+      backgroundColor: 'rgba(155, 44, 44, 0.1)',
+      borderWidth: 1,
+      borderColor: '#333',
       justifyContent: 'center',
       alignItems: 'center',
     },
     sessionInfo: {
       marginLeft: 12,
+      flex: 1,
     },
     sessionName: {
       fontSize: 14,
-      fontWeight: '600',
+      fontWeight: '800',
       color: '#fff',
+      letterSpacing: 0.3,
     },
     sessionMeta: {
-      fontSize: 11,
-      color: '#888',
+      fontSize: 10,
+      color: '#666',
       marginTop: 2,
+      fontWeight: '600',
+      letterSpacing: 0.5,
     },
     sessionRight: {
       alignItems: 'flex-end',
     },
     sessionVolume: {
       fontSize: 14,
-      fontWeight: '700',
-      color: '#9b2c2c',
+      fontWeight: '900',
+      color: theme.primary,
+      letterSpacing: -0.5,
     },
     sessionVolumeLabel: {
-      fontSize: 10,
-      color: '#888',
+      fontSize: 9,
+      color: '#555',
+      fontWeight: '700',
+      letterSpacing: 1,
+      marginTop: 1,
     },
   });
 }

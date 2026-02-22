@@ -249,10 +249,12 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#1a1a1a',
     borderRadius: 2,
     overflow: 'hidden',
     marginRight: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   progressFill: {
     height: '100%',
@@ -260,8 +262,9 @@ const styles = StyleSheet.create({
   },
   progressText: {
     ...Typography.caption,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   header: {
     paddingHorizontal: Spacing.lg,
@@ -280,13 +283,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingRight: Spacing.md,
     height: 40,
-    borderRadius: BorderRadius.md,
+    borderRadius: 4,
     borderWidth: 1,
+    borderTopWidth: 2,
+    borderLeftWidth: 3,
+    borderColor: '#333',
+    backgroundColor: '#161616',
   },
   backButtonText: {
     ...Typography.body,
-    fontWeight: '600',
-    fontSize: 15,
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
   backButtonSpacer: {
     width: 80,
@@ -297,8 +305,10 @@ const styles = StyleSheet.create({
   },
   skipButtonText: {
     ...Typography.body,
-    fontWeight: '600',
-    fontSize: 15,
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   titleContainer: {
     marginTop: Spacing.sm,
@@ -306,14 +316,15 @@ const styles = StyleSheet.create({
   title: {
     ...Typography.h2,
     fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   subtitle: {
     ...Typography.body,
-    fontSize: 15,
+    fontSize: 14,
     marginTop: Spacing.xs,
     lineHeight: 22,
+    letterSpacing: 0.3,
   },
   scrollView: {
     flex: 1,
@@ -335,13 +346,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    borderRadius: 4,
+    borderTopWidth: 2,
+    borderLeftWidth: 3,
     gap: Spacing.sm,
   },
   nextButtonText: {
     ...Typography.body,
-    fontWeight: '700',
-    fontSize: 16,
+    fontWeight: '900',
+    fontSize: 15,
+    letterSpacing: 1,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -355,8 +369,9 @@ const styles = StyleSheet.create({
   },
   laterButtonText: {
     ...Typography.bodySmall,
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 1,
   },
 });
 

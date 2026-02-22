@@ -39,6 +39,11 @@ const ACCOLADE_LABELS = {
 
 const getAccoladeLabel = (accolade) => ACCOLADE_LABELS[accolade] || accolade.replace('_', ' ').toUpperCase();
 
+const C = ADMIN_COLORS;
+const S = ADMIN_SPACING;
+const R = ADMIN_RADIUS;
+const T = ADMIN_TYPOGRAPHY;
+
 export default function UserManagementScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { alertConfig, showAlert, hideAlert } = useCustomAlert();
@@ -158,14 +163,14 @@ export default function UserManagementScreen({ navigation }) {
           {user.profileImage ? (
             <Image source={{ uri: user.profileImage }} style={styles.userAvatar} />
           ) : (
-            <View style={[styles.userAvatarPlaceholder, { backgroundColor: '#ff003c' }]}>
+            <View style={[styles.userAvatarPlaceholder]}>
               <Text style={styles.userAvatarInitial}>
                 {String(user.name || user.username || 'U').charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
           {hasAccolade && (
-            <View style={[styles.adminBadge, { backgroundColor: isAdmin ? '#ff003c' : '#ff9500' }]}>
+            <View style={[styles.adminBadge, { backgroundColor: isAdmin ? C.accent : C.warning }]}>
               <Ionicons name={isAdmin ? 'shield' : 'star'} size={8} color="#fff" />
             </View>
           )}
@@ -175,27 +180,43 @@ export default function UserManagementScreen({ navigation }) {
           <View style={styles.userNameRow}>
             <Text style={styles.userName}>{String(user.name || 'Unknown')}</Text>
             <View style={styles.userBadges}>
-              {user.accolades?.map((accolade, index) => (
+              {user.accolades?.slice(0, 2).map((accolade, index) => (
                 <View key={`${accolade}-${index}`} style={styles.accoladeBadge}>
                   <Text style={styles.accoladeBadgeText}>{getAccoladeLabel(accolade)}</Text>
                 </View>
               ))}
+              {(user.accolades?.length || 0) > 2 && (
+                <View style={styles.accoladeBadge}>
+                  <Text style={styles.accoladeBadgeText}>+{(user.accolades?.length || 0) - 2}</Text>
+                </View>
+              )}
             </View>
           </View>
           <Text style={styles.userHandle}>@{String(user.username || 'unknown')}</Text>
           <View style={styles.userStats}>
-            <Text style={styles.userStatItem}>{String(user.region || 'Global')}</Text>
-            <Text style={styles.userStatSeparator}>•</Text>
-            <Text style={styles.userStatItem}>{Number(user.totalPoints || 0)} XP</Text>
-            <Text style={styles.userStatSeparator}>•</Text>
-            <Text style={styles.userStatItem}>Rank {Number(user.rank || 99)}</Text>
+            <View style={styles.userStatItem}>
+              <Ionicons name="location" size={10} color={C.textSubtle} />
+              <Text style={styles.userStatText}>{String(user.region || 'Global')}</Text>
+            </View>
+            <View style={styles.userStatDot} />
+            <View style={styles.userStatItem}>
+              <Ionicons name="trophy" size={10} color={C.warning} />
+              <Text style={styles.userStatText}>{Number(user.totalPoints || 0).toLocaleString()} XP</Text>
+            </View>
+            <View style={styles.userStatDot} />
+            <View style={styles.userStatItem}>
+              <Ionicons name="medal" size={10} color={C.info} />
+              <Text style={styles.userStatText}>Rank {Number(user.rank || 99)}</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.userRight}>
-          <Text style={styles.userPoints}>{Number(user.totalPoints || 0).toLocaleString()}</Text>
-          <Text style={styles.userPointsLabel}>XP</Text>
-          <Ionicons name="chevron-forward" size={16} color="#333" />
+          <View style={styles.userPointsContainer}>
+            <Text style={styles.userPoints}>{Number(user.totalPoints || 0).toLocaleString()}</Text>
+            <Text style={styles.userPointsLabel}>XP</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={C.textSubtle} />
         </View>
       </TouchableOpacity>
     );
@@ -212,23 +233,28 @@ export default function UserManagementScreen({ navigation }) {
   );
 
   return (
-      <View style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>User Management</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.pageTitle}>USER MANAGEMENT</Text>
+          <Text style={styles.pageSubtitle}>Browse and manage users</Text>
+        </View>
         <View style={styles.headerRight} />
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
+        <View style={styles.searchIconContainer}>
+          <Ionicons name="search" size={18} color={C.textSubtle} />
+        </View>
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name, username, or email..."
-          placeholderTextColor="#666"
+          placeholderTextColor={C.textSubtle}
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
@@ -236,46 +262,56 @@ export default function UserManagementScreen({ navigation }) {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color="#888" />
+            <Ionicons name="close-circle" size={18} color={C.textSubtle} />
           </TouchableOpacity>
         )}
       </View>
 
       {/* Filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersScroll}
-        contentContainerStyle={styles.filtersContent}
-      >
-        <Text style={styles.filterLabel}>Region</Text>
-        {['all', ...REGIONS].map(region => (
-          <FilterChip
-            key={region}
-            label={region === 'all' ? 'All' : region}
-            value={region}
-            selected={selectedRegion === region}
-            onPress={() => setSelectedRegion(region)}
-          />
-        ))}
+      <View style={styles.filtersSection}>
+        <View style={styles.filterRow}>
+          <Text style={styles.filterLabel}>REGION</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            {['all', ...REGIONS].map(region => (
+              <FilterChip
+                key={region}
+                label={region === 'all' ? 'All' : region}
+                value={region}
+                selected={selectedRegion === region}
+                onPress={() => setSelectedRegion(region)}
+              />
+            ))}
+          </ScrollView>
+        </View>
 
-        <View style={styles.filterDivider} />
-        <Text style={styles.filterLabel}>Accolade</Text>
-        {['all', ...ACCOLADES].map(accolade => (
-          <FilterChip
-            key={accolade}
-            label={accolade === 'all' ? 'All' : getAccoladeLabel(accolade)}
-            value={accolade}
-            selected={selectedAccolade === accolade}
-            onPress={() => setSelectedAccolade(accolade)}
-          />
-        ))}
-      </ScrollView>
+        <View style={styles.filterRow}>
+          <Text style={styles.filterLabel}>ACCOLADE</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            {['all', ...ACCOLADES].map(accolade => (
+              <FilterChip
+                key={accolade}
+                label={accolade === 'all' ? 'All' : getAccoladeLabel(accolade)}
+                value={accolade}
+                selected={selectedAccolade === accolade}
+                onPress={() => setSelectedAccolade(accolade)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      </View>
 
       {/* Sort Options */}
       <View style={styles.sortContainer}>
-        <Text style={styles.sortLabel}>Sort</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <Text style={styles.sortLabel}>SORT BY</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortScroll}>
           {[
             { field: 'createdAt', label: 'Join Date' },
             { field: 'totalPoints', label: 'Points' },
@@ -293,8 +329,8 @@ export default function UserManagementScreen({ navigation }) {
               </Text>
               <Ionicons
                 name={getSortIcon(option.field)}
-                size={14}
-                color={sortBy === option.field ? '#ff003c' : '#888'}
+                size={12}
+                color={sortBy === option.field ? C.accent : C.textSubtle}
               />
             </TouchableOpacity>
           ))}
@@ -304,21 +340,27 @@ export default function UserManagementScreen({ navigation }) {
       {/* Users List */}
       {loading && users.length === 0 ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#ff003c" />
-          <Text style={styles.loadingText}>Loading users...</Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={C.accent} />
+            <Text style={styles.loadingText}>Loading users...</Text>
+          </View>
         </View>
       ) : users.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Ionicons name="people-outline" size={48} color="#333" />
-          <Text style={styles.emptyText}>No users found</Text>
-          <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="people-outline" size={40} color={C.textSubtle} />
+            </View>
+            <Text style={styles.emptyTitle}>No users found</Text>
+            <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
+          </View>
         </View>
       ) : (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ff003c" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.accent} />
           }
           onScroll={({ nativeEvent }) => {
             const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
@@ -341,16 +383,18 @@ export default function UserManagementScreen({ navigation }) {
             <UserItem key={user.id} user={user} />
           ))}
 
-          {loading && users.length > 0 && (
+          {loadingMore && (
             <View style={styles.loadingMore}>
-              <ActivityIndicator size="small" color="#ff003c" />
+              <ActivityIndicator size="small" color={C.accent} />
               <Text style={styles.loadingMoreText}>Loading more...</Text>
             </View>
           )}
 
           {currentPage >= totalPages && users.length > 0 && (
             <View style={styles.endOfList}>
+              <View style={styles.endOfListLine} />
               <Text style={styles.endOfListText}>End of list</Text>
+              <View style={styles.endOfListLine} />
             </View>
           )}
         </ScrollView>
@@ -367,255 +411,311 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: ADMIN_SPACING.xl,
-    paddingBottom: ADMIN_SPACING.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ADMIN_COLORS.border,
+    paddingHorizontal: S.xl,
+    paddingBottom: S.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+    backgroundColor: C.bg,
   },
   backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: ADMIN_COLORS.card,
+    width: 40,
+    height: 40,
+    borderRadius: R.md,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: ADMIN_SPACING.md,
+    marginRight: S.md,
     borderWidth: 1,
-    borderColor: ADMIN_COLORS.border,
+    borderColor: C.border,
   },
-  pageTitle: {
-    ...ADMIN_TYPOGRAPHY.h2,
+  headerContent: {
     flex: 1,
   },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  pageSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: C.textSubtle,
+    marginTop: 2,
+    letterSpacing: 0.8,
+  },
   headerRight: {
-    width: 34,
+    width: 40,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ADMIN_COLORS.panel,
-    marginHorizontal: ADMIN_SPACING.xl,
-    marginTop: ADMIN_SPACING.md,
-    marginBottom: ADMIN_SPACING.sm,
-    paddingHorizontal: ADMIN_SPACING.md,
-    borderRadius: ADMIN_RADIUS.md,
-    height: 42,
+    backgroundColor: C.card,
+    marginHorizontal: S.xl,
+    marginTop: S.lg,
+    marginBottom: S.md,
+    paddingHorizontal: S.md,
+    borderRadius: R.lg,
+    height: 48,
     borderWidth: 1,
-    borderColor: ADMIN_COLORS.border,
+    borderColor: C.border,
   },
-  searchIcon: {
-    marginRight: 8,
+  searchIconContainer: {
+    marginRight: S.sm,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
-    color: ADMIN_COLORS.text,
-    fontFamily: ADMIN_TYPOGRAPHY.body.fontFamily,
+    fontSize: 14,
     fontWeight: '500',
+    color: C.text,
+    paddingVertical: 0,
   },
   clearButton: {
-    padding: 4,
+    padding: S.xs,
+    marginLeft: S.sm,
   },
-  filtersScroll: {
-    marginBottom: ADMIN_SPACING.sm,
+  filtersSection: {
+    paddingBottom: S.sm,
   },
-  filtersContent: {
-    paddingHorizontal: ADMIN_SPACING.xl,
+  filterRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: S.sm,
   },
   filterLabel: {
-    ...ADMIN_TYPOGRAPHY.caption,
-    marginRight: 8,
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 1.2,
+    width: 70,
+    paddingLeft: S.xl,
   },
-  filterDivider: {
-    width: 1,
-    height: 18,
-    backgroundColor: ADMIN_COLORS.borderSoft,
-    marginHorizontal: ADMIN_SPACING.sm,
+  filterScroll: {
+    paddingRight: S.xl,
   },
   filterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: ADMIN_COLORS.card,
-    borderRadius: ADMIN_RADIUS.pill,
-    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: C.card,
+    borderRadius: R.pill,
+    marginRight: S.sm,
     borderWidth: 1,
-    borderColor: ADMIN_COLORS.border,
-    minHeight: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: C.border,
   },
   filterChipSelected: {
-    backgroundColor: ADMIN_COLORS.accentSoft,
-    borderColor: ADMIN_COLORS.accent,
+    backgroundColor: C.accentSoft,
+    borderColor: C.accent,
   },
   filterChipText: {
     fontSize: 11,
-    color: ADMIN_COLORS.textMuted,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    fontFamily: ADMIN_TYPOGRAPHY.body.fontFamily,
+    fontWeight: '700',
+    color: C.textMuted,
+    letterSpacing: 0.3,
   },
   filterChipTextSelected: {
-    color: ADMIN_COLORS.accent,
+    color: C.accent,
   },
   sortContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: ADMIN_SPACING.xl,
-    paddingTop: ADMIN_SPACING.xs,
-    paddingBottom: ADMIN_SPACING.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: ADMIN_COLORS.border,
+    paddingHorizontal: S.xl,
+    paddingTop: S.xs,
+    paddingBottom: S.md,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
   },
   sortLabel: {
-    ...ADMIN_TYPOGRAPHY.caption,
-    marginRight: 8,
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 1.2,
+    marginRight: S.sm,
+  },
+  sortScroll: {
+    flexGrow: 1,
   },
   sortOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: ADMIN_COLORS.panel,
-    borderRadius: ADMIN_RADIUS.pill,
-    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: C.card,
+    borderRadius: R.pill,
+    marginRight: S.sm,
     borderWidth: 1,
-    borderColor: ADMIN_COLORS.border,
-    minHeight: 24,
+    borderColor: C.border,
+    gap: 4,
   },
   sortOptionSelected: {
-    backgroundColor: ADMIN_COLORS.accentSoft,
-    borderColor: ADMIN_COLORS.accent,
+    backgroundColor: C.accentSoft,
+    borderColor: C.accent,
   },
   sortOptionText: {
     fontSize: 11,
-    color: ADMIN_COLORS.textMuted,
-    fontWeight: '600',
-    marginRight: 4,
-    fontFamily: ADMIN_TYPOGRAPHY.body.fontFamily,
+    fontWeight: '700',
+    color: C.textMuted,
+    letterSpacing: 0.3,
   },
   sortOptionTextSelected: {
-    color: ADMIN_COLORS.accent,
+    color: C.accent,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: ADMIN_SPACING.xl,
+    paddingHorizontal: S.xl,
+  },
+  loadingContainer: {
+    alignItems: 'center',
   },
   loadingText: {
-    marginTop: ADMIN_SPACING.md,
-    ...ADMIN_TYPOGRAPHY.bodyMuted,
+    marginTop: S.md,
+    fontSize: 13,
+    fontWeight: '500',
+    color: C.textMuted,
+    letterSpacing: 0.3,
   },
-  emptyText: {
-    marginTop: ADMIN_SPACING.md,
-    ...ADMIN_TYPOGRAPHY.h2,
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: S.xxl,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: C.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: S.lg,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+    marginBottom: S.sm,
+    letterSpacing: 0.3,
   },
   emptySubtext: {
-    marginTop: ADMIN_SPACING.sm,
-    ...ADMIN_TYPOGRAPHY.bodyMuted,
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textMuted,
+    letterSpacing: 0.3,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: ADMIN_SPACING.xl,
-    paddingBottom: ADMIN_SPACING.xxl,
+    paddingHorizontal: S.xl,
+    paddingBottom: S.xxl,
+    paddingTop: S.md,
   },
   paginationInfo: {
-    paddingVertical: ADMIN_SPACING.sm,
+    paddingVertical: S.md,
     alignItems: 'center',
+    marginBottom: S.sm,
   },
   paginationText: {
-    ...ADMIN_TYPOGRAPHY.bodyMuted,
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.textSubtle,
+    letterSpacing: 0.5,
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ADMIN_COLORS.card,
-    borderRadius: ADMIN_RADIUS.lg,
-    padding: ADMIN_SPACING.md,
-    marginBottom: ADMIN_SPACING.md,
+    backgroundColor: C.card,
+    borderRadius: R.lg,
+    padding: S.md,
+    marginBottom: S.md,
     borderWidth: 1,
-    borderColor: ADMIN_COLORS.border,
+    borderColor: C.border,
     ...ADMIN_SHADOWS.soft,
   },
   userAvatarContainer: {
-    marginRight: ADMIN_SPACING.md,
+    marginRight: S.md,
+    position: 'relative',
   },
   userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: R.md,
+    borderWidth: 2,
+    borderColor: C.border,
   },
   userAvatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: R.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ADMIN_COLORS.accent,
+    backgroundColor: C.surface,
+    borderWidth: 2,
+    borderColor: C.border,
   },
   userAvatarInitial: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: ADMIN_COLORS.white,
-    fontFamily: ADMIN_TYPOGRAPHY.title.fontFamily,
+    fontSize: 18,
+    fontWeight: '800',
+    color: C.text,
+    letterSpacing: 0.5,
   },
   adminBadge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    bottom: -3,
+    right: -3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: ADMIN_COLORS.card,
+    borderColor: C.card,
   },
   userInfo: {
     flex: 1,
+    minWidth: 0,
   },
   userNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: 3,
     flexWrap: 'wrap',
   },
   userName: {
     fontSize: 14,
     fontWeight: '700',
-    color: ADMIN_COLORS.text,
-    marginRight: 6,
-    fontFamily: ADMIN_TYPOGRAPHY.body.fontFamily,
+    color: C.text,
+    marginRight: 8,
+    letterSpacing: 0.2,
   },
   userBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   accoladeBadge: {
-    backgroundColor: ADMIN_COLORS.surface,
+    backgroundColor: C.surface,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: R.xs,
     marginRight: 4,
-    marginBottom: 2,
     borderWidth: 1,
-    borderColor: ADMIN_COLORS.borderSoft,
+    borderColor: C.borderSoft,
   },
   accoladeBadgeText: {
     fontSize: 8,
-    color: ADMIN_COLORS.textSubtle,
     fontWeight: '700',
-    letterSpacing: 0.6,
+    color: C.textSubtle,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   userHandle: {
     fontSize: 11,
-    color: ADMIN_COLORS.textMuted,
-    marginBottom: 4,
-    fontFamily: ADMIN_TYPOGRAPHY.body.fontFamily,
+    fontWeight: '500',
+    color: C.textSubtle,
+    marginBottom: 6,
+    letterSpacing: 0.3,
   },
   userStats: {
     flexDirection: 'row',
@@ -623,45 +723,73 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   userStatItem: {
-    fontSize: 10,
-    color: ADMIN_COLORS.textSubtle,
-    fontWeight: '600',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
-  userStatSeparator: {
+  userStatText: {
     fontSize: 10,
-    color: ADMIN_COLORS.textSubtle,
+    fontWeight: '600',
+    color: C.textSubtle,
+    letterSpacing: 0.3,
+  },
+  userStatDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: C.borderSoft,
     marginHorizontal: 6,
   },
   userRight: {
     alignItems: 'flex-end',
-    marginLeft: ADMIN_SPACING.sm,
+    marginLeft: S.sm,
+  },
+  userPointsContainer: {
+    alignItems: 'center',
+    marginBottom: 4,
   },
   userPoints: {
     fontSize: 14,
-    fontWeight: '700',
-    color: ADMIN_COLORS.accent,
-    fontFamily: ADMIN_TYPOGRAPHY.body.fontFamily,
+    fontWeight: '900',
+    color: C.accent,
+    letterSpacing: -0.5,
   },
   userPointsLabel: {
-    fontSize: 9,
-    color: ADMIN_COLORS.textSubtle,
+    fontSize: 8,
+    fontWeight: '700',
+    color: C.textSubtle,
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   loadingMore: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: ADMIN_SPACING.lg,
+    paddingVertical: S.xl,
+    gap: S.sm,
   },
   loadingMoreText: {
-    marginLeft: ADMIN_SPACING.sm,
-    ...ADMIN_TYPOGRAPHY.bodyMuted,
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textMuted,
+    letterSpacing: 0.3,
   },
   endOfList: {
-    paddingVertical: ADMIN_SPACING.lg,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: S.xl,
+    gap: S.md,
+  },
+  endOfListLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: C.border,
   },
   endOfListText: {
-    ...ADMIN_TYPOGRAPHY.caption,
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.textSubtle,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });

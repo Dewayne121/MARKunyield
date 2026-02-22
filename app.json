@@ -18,7 +18,9 @@
           "icon": "./assets/icon.png",
           "color": "#9b2c2c"
         }
-      ]
+      ],
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "splash": {
       "image": "./assets/splash-icon.png",

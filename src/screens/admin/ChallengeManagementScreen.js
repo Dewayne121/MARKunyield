@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video } from 'expo-av';
 import CustomAlert, { useCustomAlert } from '../../components/CustomAlert';
 import api from '../../services/api';
+import { COMPETITIVE_LIFTS, getCompetitiveLiftLabel } from '../../constants/competitiveLifts';
 import {
   ADMIN_COLORS,
   ADMIN_SPACING,
@@ -30,7 +31,12 @@ const S = ADMIN_SPACING;
 const R = ADMIN_RADIUS;
 const T = ADMIN_TYPOGRAPHY;
 
-const STATUS_FILTERS = ['active', 'ended', 'inactive', 'all'];
+const STATUS_FILTERS = [
+  { value: 'active', label: 'Active', icon: 'checkmark-circle' },
+  { value: 'ended', label: 'Ended', icon: 'time' },
+  { value: 'inactive', label: 'Inactive', icon: 'pause-circle' },
+  { value: 'all', label: 'All', icon: 'list' },
+];
 
 export default function ChallengeManagementScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -280,141 +286,217 @@ export default function ChallengeManagementScreen({ navigation }) {
 
   const renderChallengeCard = (challenge) => {
     const challengeId = getChallengeId(challenge);
+    const liftId = challenge.exercises?.[0];
+    const liftName = getCompetitiveLiftLabel(liftId) || liftId || 'Unknown Lift';
+    const targetWeight = challenge.target ? `${challenge.target}kg` : 'No target set';
+    const statusLabel = getStatusLabel(challenge);
+
     return (
       <View key={challengeId || challenge.title} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{challenge.title}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(getStatusLabel(challenge)) }]}>
-          <Text style={styles.statusText}>{getStatusLabel(challenge)}</Text>
-        </View>
-      </View>
+        {/* Left Accent */}
+        <View style={[styles.cardAccent, { backgroundColor: getStatusColor(statusLabel) }]} />
 
-      <Text style={styles.cardDescription} numberOfLines={2}>
-        {challenge.description}
-      </Text>
-
-      <View style={styles.cardStats}>
-        <View style={styles.statItem}>
-          <Ionicons name="people" size={16} color={C.textSubtle} />
-          <Text style={styles.statText}>{challenge.participantCount || 0}</Text>
-        </View>
-        {challenge.pendingSubmissions > 0 && (
-          <View style={styles.statItem}>
-            <Ionicons name="time" size={16} color={C.warning} />
-            <Text style={styles.statText}>{challenge.pendingSubmissions} pending</Text>
+        <View style={styles.cardInner}>
+          {/* Header */}
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleRow}>
+              <View style={styles.liftBadge}>
+                <Ionicons name="barbell" size={12} color={C.accent} />
+                <Text style={styles.liftBadgeText}>{liftName.toUpperCase()}</Text>
+              </View>
+              <Text style={styles.cardTitle}>{challenge.title}</Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(statusLabel) }]}>
+              <Ionicons
+                name={statusLabel === 'Active' ? 'checkmark-circle' : statusLabel === 'Ended' ? 'time' : 'pause-circle'}
+                size={10}
+                color={C.white}
+              />
+              <Text style={styles.statusText}>{statusLabel.toUpperCase()}</Text>
+            </View>
           </View>
-        )}
-        <View style={styles.statItem}>
-          <Ionicons name="trophy" size={16} color={C.warning} />
-          <Text style={styles.statText}>{challenge.reward} pts</Text>
-        </View>
-      </View>
 
-      <View style={styles.cardActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('AdminChallengeBuilder', { challenge, isEdit: true })}
-        >
-          <Ionicons name="pencil" size={18} color={C.white} />
-          <Text style={styles.actionButtonText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: C.surface }]}
-          onPress={() => handleToggleActive(challenge)}
-        >
-          <Ionicons name={challenge.isActive ? "pause" : "play"} size={18} color={C.white} />
-          <Text style={styles.actionButtonText}>{challenge.isActive ? 'Deactivate' : 'Activate'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: C.accent }]}
-          onPress={() => handleDeleteChallenge(challenge)}
-        >
-          <Ionicons name="trash" size={18} color={C.white} />
-        </TouchableOpacity>
-      </View>
+          {/* Target Row */}
+          <View style={styles.targetRow}>
+            <View style={styles.targetBadge}>
+              <Ionicons name="trophy" size={14} color={C.warning} />
+              <Text style={styles.targetText}>{targetWeight}</Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          <Text style={styles.cardDescription} numberOfLines={2}>
+            {challenge.description}
+          </Text>
+
+          {/* Stats */}
+          <View style={styles.cardStats}>
+            <View style={styles.statItem}>
+              <Ionicons name="people" size={14} color={C.textSubtle} />
+              <Text style={styles.statText}>{challenge.participantCount || 0} participants</Text>
+            </View>
+            {challenge.pendingSubmissions > 0 && (
+              <View style={styles.statItem}>
+                <Ionicons name="time" size={14} color={C.warning} />
+                <Text style={[styles.statText, { color: C.warning }]}>{challenge.pendingSubmissions} pending</Text>
+              </View>
+            )}
+            <View style={styles.statItem}>
+              <Ionicons name="gift" size={14} color={C.success} />
+              <Text style={styles.statText}>{challenge.reward} pts reward</Text>
+            </View>
+          </View>
+
+          {/* Actions */}
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.editButton]}
+              onPress={() => navigation.navigate('AdminChallengeBuilder', { challenge, isEdit: true })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="pencil" size={14} color={C.white} />
+              <Text style={styles.actionButtonText}>EDIT</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.toggleButton]}
+              onPress={() => handleToggleActive(challenge)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={challenge.isActive ? "pause" : "play"} size={14} color={C.text} />
+              <Text style={styles.actionButtonText}>{challenge.isActive ? 'PAUSE' : 'START'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton]}
+              onPress={() => handleDeleteChallenge(challenge)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash" size={14} color={C.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     );
   };
 
   const renderSubmissionCard = (submission) => (
     <View key={submission.id} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.userInfo}>
-          {submission.user.profileImage ? (
-            <Image source={{ uri: submission.user.profileImage }} style={styles.userAvatar} />
-          ) : (
-            <View style={[styles.userAvatar, { backgroundColor: C.surface }]}>
-              <Text style={styles.avatarText}>{submission.user.name[0]}</Text>
+      {/* Left Accent - Warning for pending */}
+      <View style={[styles.cardAccent, { backgroundColor: C.warning }]} />
+
+      <View style={styles.cardInner}>
+        {/* Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.userInfo}>
+            {submission.user.profileImage ? (
+              <Image source={{ uri: submission.user.profileImage }} style={styles.userAvatar} />
+            ) : (
+              <View style={[styles.userAvatar, { backgroundColor: C.surface }]}>
+                <Text style={styles.avatarText}>{(submission.user.name || 'U')[0].toUpperCase()}</Text>
+              </View>
+            )}
+            <View>
+              <Text style={styles.cardTitle}>{submission.user.name}</Text>
+              <Text style={styles.cardSubtitle}>@{submission.user.username}</Text>
             </View>
-          )}
-          <View>
-            <Text style={styles.cardTitle}>{submission.user.name}</Text>
-            <Text style={styles.cardSubtitle}>@{submission.user.username}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: C.warning }]}>
+            <Ionicons name="time" size={10} color={C.black} />
+            <Text style={[styles.statusText, { color: C.black }]}>PENDING</Text>
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: C.warning }]}>
-          <Text style={styles.statusText}>Pending</Text>
+
+        {/* Challenge Tag */}
+        <View style={styles.challengeTag}>
+          <Ionicons name="trophy" size={12} color={C.warning} />
+          <Text style={styles.challengeTagName}>{submission.challenge?.title || 'Unknown Challenge'}</Text>
         </View>
-      </View>
 
-      <View style={styles.challengeTag}>
-        <Ionicons name="trophy" size={14} color={C.warning} />
-        <Text style={styles.challengeTagName}>{submission.challenge?.title || 'Unknown Challenge'}</Text>
-      </View>
+        {/* Submission Details */}
+        <View style={styles.submissionDetails}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>EXERCISE</Text>
+            <Text style={styles.detailValue}>{submission.exercise}</Text>
+          </View>
+          <View style={styles.detailRowInline}>
+            {submission.reps > 0 && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>REPS</Text>
+                <Text style={styles.detailValue}>{submission.reps}</Text>
+              </View>
+            )}
+            {submission.weight > 0 && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>WEIGHT</Text>
+                <Text style={styles.detailValue}>{submission.weight}kg</Text>
+              </View>
+            )}
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>VALUE</Text>
+              <Text style={styles.detailValue}>{submission.value}</Text>
+            </View>
+          </View>
+        </View>
 
-      <View style={styles.submissionDetails}>
-        <Text style={styles.detailLabel}>Exercise: <Text style={styles.detailValue}>{submission.exercise}</Text></Text>
-        {submission.reps > 0 && <Text style={styles.detailLabel}>Reps: <Text style={styles.detailValue}>{submission.reps}</Text></Text>}
-        {submission.weight > 0 && <Text style={styles.detailLabel}>Weight: <Text style={styles.detailValue}>{submission.weight}kg</Text></Text>}
-        <Text style={styles.detailLabel}>Value: <Text style={styles.detailValue}>{submission.value}</Text></Text>
-      </View>
+        {/* Video Button */}
+        {submission.videoUrl && (
+          <TouchableOpacity
+            style={styles.videoButton}
+            onPress={() => {/* Navigate to video player */}}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="play-circle" size={18} color={C.accent} />
+            <Text style={styles.videoButtonText}>WATCH VIDEO</Text>
+          </TouchableOpacity>
+        )}
 
-      {submission.videoUrl && (
-        <TouchableOpacity
-          style={styles.videoButton}
-          onPress={() => {/* Navigate to video player */}}
-        >
-          <Ionicons name="play-circle" size={24} color={C.accent} />
-          <Text style={styles.videoButtonText}>Watch Video</Text>
-        </TouchableOpacity>
-      )}
+        {/* Notes */}
+        {submission.notes && (
+          <View style={styles.notesContainer}>
+            <Text style={styles.notesLabel}>NOTES</Text>
+            <Text style={styles.notesText}>{submission.notes}</Text>
+          </View>
+        )}
 
-      {submission.notes && (
-        <Text style={styles.notesText}>Notes: {submission.notes}</Text>
-      )}
-
-      <View style={styles.cardActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: C.success, flex: 1 }]}
-          onPress={() => handleVerifySubmission(submission, 'approve')}
-        >
-          <Ionicons name="checkmark" size={18} color={C.black} />
-          <Text style={[styles.actionButtonText, { color: C.black }]}>Approve</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: C.accent, flex: 1 }]}
-          onPress={() => openVerifyModal(submission)}
-        >
-          <Ionicons name="close" size={18} color={C.white} />
-          <Text style={styles.actionButtonText}>Reject</Text>
-        </TouchableOpacity>
+        {/* Actions */}
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.approveButton, { flex: 1 }]}
+            onPress={() => handleVerifySubmission(submission, 'approve')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark-circle" size={16} color={C.white} />
+            <Text style={styles.actionButtonText}>APPROVE</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.rejectButton, { flex: 1 }]}
+            onPress={() => openVerifyModal(submission)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle" size={16} color={C.white} />
+            <Text style={styles.actionButtonText}>REJECT</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+    <View style={[styles.container, { paddingTop: insets.top + S.lg }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={C.white} />
+          <Ionicons name="arrow-back" size={20} color={C.white} />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>Challenge Management</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.pageTitle}>CHALLENGE MANAGEMENT</Text>
+          <Text style={styles.pageSubtitle}>MANAGE & VERIFY</Text>
+        </View>
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => navigation.navigate('AdminChallengeBuilder')}
+          activeOpacity={0.7}
         >
-          <Ionicons name="add" size={24} color={C.white} />
+          <Ionicons name="add" size={20} color={C.white} />
         </TouchableOpacity>
       </View>
 
@@ -423,36 +505,62 @@ export default function ChallengeManagementScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'challenges' && styles.tabActive]}
           onPress={() => setActiveTab('challenges')}
+          activeOpacity={0.7}
         >
+          <Ionicons
+            name="trophy"
+            size={14}
+            color={activeTab === 'challenges' ? C.accent : C.textSubtle}
+          />
           <Text style={[styles.tabText, activeTab === 'challenges' && styles.tabTextActive]}>
-            Challenges
+            CHALLENGES
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'queue' && styles.tabActive]}
           onPress={() => setActiveTab('queue')}
+          activeOpacity={0.7}
         >
+          <Ionicons
+            name="clipboard"
+            size={14}
+            color={activeTab === 'queue' ? C.accent : C.textSubtle}
+          />
           <Text style={[styles.tabText, activeTab === 'queue' && styles.tabTextActive]}>
-            Verification Queue
+            VERIFICATION QUEUE
           </Text>
+          {submissions.length > 0 && activeTab !== 'queue' && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{submissions.length}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
       {/* Filter Chips - only for challenges tab */}
       {activeTab === 'challenges' && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
-          {STATUS_FILTERS.map(filter => (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, selectedFilter === filter && styles.filterChipActive]}
-              onPress={() => setSelectedFilter(filter)}
-            >
-              <Text style={[styles.filterChipText, selectedFilter === filter && styles.filterChipTextActive]}>
-                {filter.charAt(0).toUpperCase() + filter.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.filtersContainer}>
+          <Text style={styles.filterLabel}>STATUS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {STATUS_FILTERS.map((filter) => (
+              <TouchableOpacity
+                key={filter.value}
+                style={[styles.filterChip, selectedFilter === filter.value && styles.filterChipActive]}
+                onPress={() => setSelectedFilter(filter.value)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={filter.icon}
+                  size={12}
+                  color={selectedFilter === filter.value ? C.white : C.textSubtle}
+                />
+                <Text style={[styles.filterChipText, selectedFilter === filter.value && styles.filterChipTextActive]}>
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       )}
 
       {/* Content */}
@@ -464,17 +572,21 @@ export default function ChallengeManagementScreen({ navigation }) {
       ) : (
         <ScrollView
           style={styles.content}
+          contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.accent} />
           }
+          showsVerticalScrollIndicator={false}
         >
           {activeTab === 'challenges' ? (
             challenges.length > 0 ? (
               challenges.map(renderChallengeCard)
             ) : (
               <View style={styles.centerContainer}>
-                <Ionicons name="trophy-outline" size={64} color={C.textSubtle} />
-                <Text style={styles.emptyText}>No challenges found</Text>
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons name="trophy-outline" size={48} color={C.textSubtle} />
+                </View>
+                <Text style={styles.emptyTitle}>NO CHALLENGES FOUND</Text>
                 <Text style={styles.emptySubtext}>Create a new challenge to get started</Text>
               </View>
             )
@@ -483,11 +595,15 @@ export default function ChallengeManagementScreen({ navigation }) {
               submissions.map(renderSubmissionCard)
             ) : (
               <View style={styles.centerContainer}>
-                <Ionicons name="checkmark-circle-outline" size={64} color={C.success} />
-                <Text style={styles.emptyText}>No pending submissions</Text>
+                <View style={[styles.emptyIconContainer, { borderColor: C.success }]}>
+                  <Ionicons name="checkmark-done" size={48} color={C.success} />
+                </View>
+                <Text style={styles.emptyTitle}>ALL CAUGHT UP</Text>
+                <Text style={styles.emptySubtext}>No pending submissions to review</Text>
               </View>
             )
           )}
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       )}
 
@@ -495,8 +611,17 @@ export default function ChallengeManagementScreen({ navigation }) {
       <Modal visible={showVerifyModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Reject Submission</Text>
-            <Text style={styles.modalSubtitle}>Please provide a reason for rejection</Text>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconBadge}>
+                <Ionicons name="close-circle" size={24} color={C.danger} />
+              </View>
+              <Text style={styles.modalTitle}>REJECT SUBMISSION</Text>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Please provide a reason for rejection
+            </Text>
 
             <TextInput
               style={styles.textInput}
@@ -511,22 +636,29 @@ export default function ChallengeManagementScreen({ navigation }) {
 
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: C.surface }]}
+                style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => {
                   setShowVerifyModal(false);
                   setRejectionReason('');
                 }}
+                activeOpacity={0.7}
               >
-                <Text style={styles.modalButtonText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>CANCEL</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: C.accent }]}
+                style={[styles.modalButton, styles.modalRejectButton]}
                 onPress={() => handleVerifySubmission(selectedSubmission, 'reject')}
                 disabled={verifying}
+                activeOpacity={0.7}
               >
-                <Text style={styles.modalButtonText}>
-                  {verifying ? 'Rejecting...' : 'Reject'}
-                </Text>
+                {verifying ? (
+                  <ActivityIndicator size="small" color={C.white} />
+                ) : (
+                  <>
+                    <Ionicons name="close" size={16} color={C.white} />
+                    <Text style={styles.modalRejectText}>REJECT</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -541,91 +673,144 @@ export default function ChallengeManagementScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: ADMIN_SURFACES.page,
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: S.xl,
-    paddingBottom: S.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: S.lg,
+    backgroundColor: C.panel,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
   backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: R.sm,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.border,
   },
-  pageTitle: {
+  headerCenter: {
     flex: 1,
-    textAlign: 'center',
-    ...T.h2,
+    marginLeft: S.md,
+  },
+  pageTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: 1,
+  },
+  pageSubtitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.textSubtle,
+    letterSpacing: 2,
+    marginTop: 2,
   },
   createButton: {
     backgroundColor: C.accent,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: R.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  // Tabs
   tabs: {
     flexDirection: 'row',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    backgroundColor: C.panel,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
     paddingHorizontal: S.xl,
   },
   tab: {
     flex: 1,
-    paddingVertical: S.sm,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: S.md,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
+    gap: 6,
   },
   tabActive: {
     borderBottomColor: C.accent,
   },
   tabText: {
-    ...T.caption,
+    fontSize: 11,
+    fontWeight: '700',
     color: C.textSubtle,
+    letterSpacing: 1,
   },
   tabTextActive: {
     color: C.text,
   },
-  filtersScroll: {
+  tabBadge: {
+    backgroundColor: C.accent,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: R.xs,
+    marginLeft: 4,
+  },
+  tabBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.white,
+  },
+
+  // Filters
+  filtersContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: S.xl,
-    paddingVertical: S.sm,
+    paddingVertical: S.md,
     backgroundColor: C.panel,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+  },
+  filterLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 1.5,
+    marginRight: S.sm,
   },
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: R.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: S.sm,
+    paddingVertical: 6,
     backgroundColor: C.card,
-    marginRight: 8,
+    borderRadius: R.xs,
+    marginRight: S.xs,
     borderWidth: 1,
     borderColor: C.border,
-    minHeight: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
   },
   filterChipActive: {
-    backgroundColor: C.accentSoft,
+    backgroundColor: C.accent,
     borderColor: C.accent,
   },
   filterChipText: {
-    fontSize: 11,
+    fontSize: 10,
+    fontWeight: '700',
     color: C.textSubtle,
-    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   filterChipTextActive: {
-    color: C.accent,
+    color: C.white,
   },
+
+  // Content
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: S.xl,
   },
   centerContainer: {
@@ -633,224 +818,409 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: S.xl,
+    minHeight: 300,
   },
   loadingText: {
     marginTop: S.md,
-    ...T.bodyMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.textSubtle,
+    letterSpacing: 1,
   },
-  emptyText: {
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: C.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: C.textSubtle,
+    marginBottom: S.md,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: 2,
     marginTop: S.md,
-    ...T.h2,
   },
   emptySubtext: {
-    marginTop: S.sm,
-    ...T.bodyMuted,
+    marginTop: S.xs,
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textSubtle,
   },
+  bottomSpacer: {
+    height: 40,
+  },
+
+  // Card
   card: {
     backgroundColor: C.card,
-    borderRadius: R.lg,
-    padding: S.md,
-    marginBottom: S.md,
+    borderRadius: R.md,
+    marginBottom: S.lg,
     borderWidth: 1,
     borderColor: C.border,
-    ...ADMIN_SHADOWS.soft,
+    overflow: 'hidden',
+    ...ADMIN_SHADOWS.card,
   },
+  cardAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: C.success,
+  },
+  cardInner: {
+    padding: S.md,
+    paddingLeft: S.lg,
+    marginLeft: 4,
+  },
+
+  // Card Header
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: S.sm,
   },
-  userInfo: {
+  cardTitleRow: {
+    flex: 1,
+    marginRight: S.sm,
+  },
+  liftBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    backgroundColor: C.accent + '15',
+    borderRadius: R.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+    gap: 4,
   },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: S.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: C.white,
+  liftBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.accent,
+    letterSpacing: 0.5,
   },
   cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: C.text,
   },
   cardSubtitle: {
     fontSize: 11,
     color: C.textSubtle,
-    marginTop: 2,
+    marginTop: 1,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: R.pill,
-    backgroundColor: C.surface,
+    borderRadius: R.xs,
+    gap: 4,
   },
   statusText: {
     fontSize: 9,
-    fontWeight: '700',
-    color: C.text,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    fontWeight: '800',
+    color: C.white,
+    letterSpacing: 0.5,
   },
-  cardDescription: {
-    fontSize: 13,
-    color: C.textMuted,
+
+  // Target Row
+  targetRow: {
     marginBottom: S.sm,
   },
-  challengeTag: {
+  targetBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.surface,
-    borderRadius: R.md,
+    backgroundColor: C.warning + '15',
+    borderRadius: R.xs,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginBottom: S.sm,
+    paddingVertical: 4,
     alignSelf: 'flex-start',
+    gap: 6,
   },
-  challengeTagName: {
-    fontSize: 11,
-    color: C.text,
-    marginLeft: 6,
-    fontWeight: '600',
+  targetText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: C.warning,
   },
+
+  // Card Description
+  cardDescription: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textMuted,
+    marginBottom: S.sm,
+    lineHeight: 17,
+  },
+
+  // Card Stats
   cardStats: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     marginBottom: S.sm,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 16,
+    marginBottom: 4,
   },
   statText: {
     marginLeft: 4,
     fontSize: 11,
+    fontWeight: '600',
     color: C.textSubtle,
   },
+
+  // Challenge Tag
+  challengeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.surface,
+    borderRadius: R.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: S.sm,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  challengeTagName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.text,
+  },
+
+  // Submission Details
   submissionDetails: {
     backgroundColor: C.panel,
-    borderRadius: R.md,
+    borderRadius: R.xs,
     padding: S.sm,
-    marginVertical: S.sm,
+    marginBottom: S.sm,
     borderWidth: 1,
     borderColor: C.border,
   },
+  detailRow: {
+    marginBottom: 8,
+  },
+  detailRowInline: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  detailItem: {
+    alignItems: 'center',
+  },
   detailLabel: {
-    fontSize: 11,
+    fontSize: 9,
+    fontWeight: '800',
     color: C.textSubtle,
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: 2,
   },
   detailValue: {
+    fontSize: 13,
+    fontWeight: '700',
     color: C.text,
-    fontWeight: '600',
   },
+
+  // Video Button
   videoButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: C.panel,
-    borderRadius: R.md,
+    borderRadius: R.xs,
     padding: S.sm,
-    marginVertical: S.sm,
+    marginBottom: S.sm,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: C.accent + '40',
+    gap: 6,
   },
   videoButtonText: {
-    marginLeft: 8,
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '700',
     color: C.accent,
-    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+
+  // Notes
+  notesContainer: {
+    marginBottom: S.sm,
+  },
+  notesLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   notesText: {
     fontSize: 11,
+    fontWeight: '500',
     color: C.textSubtle,
     fontStyle: 'italic',
-    marginVertical: 8,
   },
+
+  // User Info
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  userAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: R.xs,
+    marginRight: S.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: C.accent,
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: C.white,
+  },
+
+  // Card Actions
   cardActions: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 'auto',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: C.surface,
-    borderRadius: R.md,
+    borderRadius: R.xs,
     paddingVertical: 8,
-    paddingHorizontal: 10,
-    minWidth: 50,
+    paddingHorizontal: 12,
+    gap: 4,
     borderWidth: 1,
     borderColor: C.border,
   },
-  actionButtonText: {
-    marginLeft: 6,
-    fontSize: 11,
-    color: C.text,
-    fontWeight: '600',
+  editButton: {
+    backgroundColor: C.info,
+    borderColor: C.info,
   },
+  toggleButton: {
+    flex: 1,
+  },
+  deleteButton: {
+    backgroundColor: C.danger,
+    borderColor: C.danger,
+  },
+  approveButton: {
+    backgroundColor: C.success,
+    borderColor: C.success,
+  },
+  rejectButton: {
+    backgroundColor: C.danger,
+    borderColor: C.danger,
+  },
+  actionButtonText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: C.text,
+    letterSpacing: 0.5,
+  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: S.xl,
   },
   modalContent: {
     backgroundColor: C.card,
     borderRadius: R.lg,
-    padding: S.lg,
+    padding: S.xl,
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 400,
     borderWidth: 1,
     borderColor: C.border,
+    ...ADMIN_SHADOWS.card,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: S.md,
+    gap: S.sm,
+  },
+  modalIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: R.sm,
+    backgroundColor: C.danger + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
-    ...T.h2,
-    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: 1,
   },
   modalSubtitle: {
-    ...T.bodyMuted,
-    marginBottom: S.md,
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textSubtle,
+    marginBottom: S.lg,
   },
   textInput: {
     backgroundColor: C.panel,
-    borderRadius: R.md,
+    borderRadius: R.sm,
     padding: S.md,
     color: C.text,
     fontSize: 13,
-    minHeight: 80,
+    fontWeight: '500',
+    minHeight: 100,
     textAlignVertical: 'top',
-    marginBottom: S.md,
+    marginBottom: S.lg,
     borderWidth: 1,
     borderColor: C.border,
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: S.md,
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: R.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: R.sm,
+    gap: 6,
+  },
+  modalCancelButton: {
     backgroundColor: C.surface,
     borderWidth: 1,
     borderColor: C.border,
   },
-  modalButtonText: {
+  modalRejectButton: {
+    backgroundColor: C.danger,
+  },
+  modalCancelText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: C.text,
+    letterSpacing: 0.5,
+  },
+  modalRejectText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: C.white,
+    letterSpacing: 0.5,
   },
 });

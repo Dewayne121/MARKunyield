@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
@@ -28,7 +29,8 @@ export default function GlobalHeader() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) + 12 }]}>
+      
       {/* Top Row: Profile, Name, Tier */}
       <View style={styles.topRow}>
         <TouchableOpacity
@@ -48,63 +50,90 @@ export default function GlobalHeader() {
         </TouchableOpacity>
 
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{displayName}</Text>
+          <Text style={styles.userName} numberOfLines={1}>{displayName.toUpperCase()}</Text>
           <Text style={[styles.userTier, { color: currentTier.color }]}>
-            {currentTier.name}
+            RANK: {currentTier.name.toUpperCase()}
           </Text>
         </View>
 
-        <View style={styles.tierBadgeContainer}>
-          <Image
-            source={currentTier.image}
-            style={styles.tierBadgeImage}
-            resizeMode="contain"
-          />
+        {/* Tactical Status Block */}
+        <View style={styles.statusBlock}>
+          <View style={styles.tierBadgeContainer}>
+            <Image
+              source={currentTier.image}
+              style={styles.tierBadgeImage}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View style={[styles.streakBadge, { borderColor: theme.primary || '#FF4500' }]}>
+            <Ionicons name="flame" size={12} color={theme.primary || '#FF4500'} />
+            <Text style={[styles.streakText, { color: theme.primary || '#FF4500' }]}>
+              {user.streak || 0}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* Bottom Row: Progress to next tier */}
-      <View style={styles.progressRow}>
-        <View style={[styles.progressLabel, { backgroundColor: currentTier.color }]}>
-          <Text style={styles.progressLabelText}>{totalPoints} XP</Text>
-        </View>
-        <View style={styles.xpTrack}>
-          <View style={[styles.xpFill, { width: `${tierProgress.percentage}%`, backgroundColor: currentTier.color }]} />
-        </View>
-        {tierProgress.nextTier ? (
-          <Text style={styles.xpLabel}>
-            {tierProgress.current} / {tierProgress.target} XP
+      {/* Bottom Row: Industrial Progress Track */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressHeader}>
+          <Text style={[styles.progressLabelText, { color: currentTier.color }]}>
+            {totalPoints} TOTAL XP
           </Text>
-        ) : (
-          <Text style={styles.xpLabel}>MAX TIER</Text>
-        )}
+          {tierProgress.nextTier ? (
+            <Text style={styles.xpLabel}>
+              [ {tierProgress.current} / {tierProgress.target} ]
+            </Text>
+          ) : (
+            <Text style={styles.xpLabel}>[ MAX TIER ]</Text>
+          )}
+        </View>
+        
+        <View style={styles.xpTrackOuter}>
+          <View style={styles.xpTrackInner}>
+            <View 
+              style={[
+                styles.xpFill, 
+                { width: `${tierProgress.percentage}%`, backgroundColor: currentTier.color }
+              ]} 
+            />
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
+// -------------------------------------------------------------
+// STYLESHEET: Dark, Gritty, Industrial Gym Aesthetic
+// -------------------------------------------------------------
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 20,
     backgroundColor: '#0a0a0a',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomWidth: 2,
+    borderBottomColor: '#1a1a1a',
   },
+  
+  // --- Top Row ---
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
+  
+  // Profile Picture (Sharp Box)
   profilePicContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 4, 
     borderWidth: 2,
-    borderColor: '#9b2c2c',
+    borderColor: '#333',
     overflow: 'hidden',
-    backgroundColor: '#1a1a1a',
-    marginRight: 14,
+    backgroundColor: '#121212',
+    marginRight: 16,
   },
   profilePic: {
     width: '100%',
@@ -114,82 +143,111 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#9b2c2c',
+    backgroundColor: '#121212',
   },
   profilePicInitials: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
+    fontWeight: '900',
+    color: '#666',
+    letterSpacing: 1,
   },
+  
+  // User Info
   userInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   userName: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 2,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   userTier: {
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  
+  // Status Block (Tier + Streak)
+  statusBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   tierBadgeContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     width: 40,
     height: 40,
-  },
-  tierBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#121212',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    borderRadius: 4,
   },
   tierBadgeImage: {
-    width: 40,
-    height: 40,
+    width: 26,
+    height: 26,
   },
-  tierIcon: {
-    fontSize: 16,
-  },
-  progressRow: {
+  streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  progressLabel: {
+    backgroundColor: '#121212',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    gap: 6,
+    height: 40,
+  },
+  streakText: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  
+  // --- Progress Section ---
+  progressContainer: {
+    backgroundColor: '#121212',
+    padding: 16,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#222',
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 10,
   },
   progressLabelText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  xpLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 0.5,
+    color: '#666',
+    letterSpacing: 1.5,
   },
-  xpTrack: {
-    flex: 1,
+  
+  // Industrial Progress Track
+  xpTrackOuter: {
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    padding: 3,
+    borderRadius: 4,
+    backgroundColor: '#0a0a0a',
+  },
+  xpTrackInner: {
     height: 6,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 3,
+    backgroundColor: '#161616',
+    borderRadius: 2,
     overflow: 'hidden',
   },
   xpFill: {
     height: '100%',
-    borderRadius: 3,
-  },
-  xpLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#666',
-    fontFamily: 'monospace',
+    borderRadius: 2,
   },
 });

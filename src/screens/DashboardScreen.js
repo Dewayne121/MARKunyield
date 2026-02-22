@@ -1,56 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useApp } from '../context/AppContext';
 import { useWorkout } from '../context/WorkoutContext';
-import { Spacing, BorderRadius, Typography, SKINS } from '../constants/colors';
 import GlobalHeader from '../components/GlobalHeader';
-
-const BR = BorderRadius;
-
-function withinLastDays(dateISO, days) {
-  const d = new Date(dateISO);
-  const now = new Date();
-  const diff = (now - d) / (1000 * 60 * 60 * 24);
-  return diff <= days;
-}
 
 export default function DashboardScreen({ navigation }) {
   const { theme, skin } = useTheme();
-  const { user, logs, weightUnit, heightUnit } = useApp();
+  const { user, logs } = useApp();
   const { completedSessions } = useWorkout();
   const insets = useSafeAreaInsets();
 
-  const [workoutLimit, setWorkoutLimit] = useState(3);
+  const [workoutLimit] = useState(3);
 
-  // Memoized calculations
-  const weekTotal = useMemo(() => {
-    return (logs || [])
-      .filter((l) => withinLastDays(l.date, 7))
-      .reduce((sum, l) => sum + (Number(l.points) || 0), 0);
-  }, [logs]);
-
-  // Display values with unit conversion
-  const displayWeight = useMemo(() => {
-    if (!user?.weight) return '--';
-    if (weightUnit === 'lbs') {
-      return Math.round(user.weight * 2.20462);
-    }
-    return user.weight;
-  }, [user?.weight, weightUnit]);
-
-  const displayHeight = useMemo(() => {
-    if (!user?.height) return '--';
-    if (heightUnit === 'ft') {
-      const totalFeet = user.height * 0.0328084;
-      return totalFeet.toFixed(1); 
-    }
-    return user.height;
-  }, [user?.height, heightUnit]);
-
-  // Activity chart data
+  // Activity chart data (Untouched)
   const activityData = useMemo(() => {
     const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     const today = new Date();
@@ -67,7 +32,7 @@ export default function DashboardScreen({ navigation }) {
     return data;
   }, [logs]);
 
-  // Recent sessions summary
+  // Recent sessions summary (Untouched)
   const recentSessionsSummary = useMemo(() => {
     return (completedSessions || [])
       .sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt))
@@ -110,70 +75,48 @@ export default function DashboardScreen({ navigation }) {
       <GlobalHeader />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Welcome Banner */}
-        <View style={styles.welcomeBanner}>
-          <View>
-            <Text style={styles.welcomeDate}>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase()}</Text>
-            <Text style={styles.welcomeTitle}>WELCOME BACK, {user.name?.split(' ')[0].toUpperCase()}</Text>
-          </View>
-          <View style={styles.streakBadge}>
-            <Ionicons name="flame" size={14} color="#FF6B35" />
-            <Text style={styles.streakText}>{user.streak || 0}</Text>
-          </View>
-        </View>
 
-        {/* Quick Actions Grid (UX Rule 7: Efficiency) */}
-        <View style={styles.gridContainer}>
+        {/* Hierarchical Action Board (Improved UX) */}
+        <View style={styles.actionBoard}>
+          {/* Primary Action */}
           <TouchableOpacity
-            style={[styles.gridItem, { backgroundColor: 'rgba(155, 44, 44, 0.15)', borderColor: 'rgba(155, 44, 44, 0.3)' }]}
+            style={[styles.primaryAction, { borderColor: theme.primary }]}
             onPress={() => navigation.navigate('Training', { screen: 'WorkoutHome' })}
+            activeOpacity={0.8}
           >
-            <Ionicons name="play" size={28} color={theme.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.gridItem}
-            onPress={() => navigation.navigate('CalendarLog')}
-          >
-            <Ionicons name="calendar-outline" size={28} color="#fff" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.gridItem}
-            onPress={() => navigation.navigate('Compete')}
-          >
-            <Ionicons name="trophy-outline" size={28} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Body Stats Row */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>VITALS</Text>
-          <View style={styles.bodyStatsRow}>
-            <View style={styles.bodyStatItem}>
-              <Text style={styles.bodyStatLabel}>WEIGHT</Text>
-              <View style={styles.statValueContainer}>
-                <Text style={styles.bodyStatValue}>{displayWeight}</Text>
-                <Text style={styles.bodyStatUnit}>{weightUnit}</Text>
+            <View style={styles.primaryActionLeft}>
+              <Ionicons name="barbell" size={32} color={theme.primary} />
+              <View style={styles.primaryActionTextWrapper}>
+                <Text style={styles.primaryActionTitle}>INITIATE WORKOUT</Text>
+                <Text style={styles.primaryActionSub}>CRUSH YOUR GOALS TODAY</Text>
               </View>
             </View>
-            <View style={styles.verticalDivider} />
-            <View style={styles.bodyStatItem}>
-              <Text style={styles.bodyStatLabel}>HEIGHT</Text>
-              <View style={styles.statValueContainer}>
-                <Text style={styles.bodyStatValue}>{displayHeight}</Text>
-                <Text style={styles.bodyStatUnit}>{heightUnit || 'cm'}</Text>
-              </View>
-            </View>
-            <View style={styles.verticalDivider} />
-            <View style={styles.bodyStatItem}>
-              <Text style={styles.bodyStatLabel}>WEEKLY XP</Text>
-              <Text style={[styles.bodyStatValue, { color: theme.primary }]}>{weekTotal}</Text>
-            </View>
+            <Ionicons name="chevron-forward" size={24} color={theme.primary} />
+          </TouchableOpacity>
+
+          {/* Secondary Actions Row */}
+          <View style={styles.secondaryActionsRow}>
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={() => navigation.navigate('CalendarLog')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="calendar" size={20} color="#888" style={{ marginBottom: 6 }} />
+              <Text style={styles.secondaryActionText}>HISTORY</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryAction}
+              onPress={() => navigation.navigate('Compete')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trophy" size={20} color="#888" style={{ marginBottom: 6 }} />
+              <Text style={styles.secondaryActionText}>RANKINGS</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Activity Panel */}
+        {/* Industrial Activity Graph */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ACTIVITY LOG</Text>
           <View style={styles.activityPanel}>
@@ -182,7 +125,15 @@ export default function DashboardScreen({ navigation }) {
                 const heightPct = Math.min(100, (item.total / 600) * 100);
                 return (
                   <View key={idx} style={styles.graphCol}>
-                    <View style={[styles.graphBar, { height: Math.max(4, heightPct) + '%' }, item.hasData && { backgroundColor: theme.primary }]} />
+                    <View style={styles.graphTrack}>
+                      <View 
+                        style={[
+                          styles.graphFill, 
+                          { height: Math.max(4, heightPct) + '%' }, 
+                          item.hasData && { backgroundColor: theme.primary }
+                        ]} 
+                      />
+                    </View>
                     <Text style={[styles.graphDay, item.hasData && { color: '#fff' }]}>{item.day}</Text>
                   </View>
                 );
@@ -191,13 +142,13 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Recent Workouts Section */}
+        {/* Recent Activity (Workouts) */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>RECENT WORKOUTS</Text>
+            <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
             {recentSessionsSummary.length > 0 && (
               <TouchableOpacity onPress={() => navigation.jumpTo('Training')}>
-                <Text style={styles.seeAllText}>SEE ALL</Text>
+                <Text style={[styles.seeAllText, { color: theme.primary }]}>VIEW ALL</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -206,33 +157,37 @@ export default function DashboardScreen({ navigation }) {
             recentSessionsSummary.map((session) => (
               <TouchableOpacity
                 key={session.id}
-                style={styles.workoutCard}
+                style={[styles.workoutCard, { borderLeftColor: theme.primary }]}
                 onPress={() => navigation.jumpTo('Training')}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
-                <View style={styles.workoutIcon}>
-                  <Ionicons name="barbell" size={20} color="#fff" />
+                <View style={styles.workoutMainInfo}>
+                  <Text style={styles.workoutName} numberOfLines={1}>{session.name.toUpperCase()}</Text>
+                  <Text style={styles.workoutDate}>{new Date(session.finishedAt).toLocaleDateString().toUpperCase()}</Text>
                 </View>
-                <View style={styles.workoutInfo}>
-                  <Text style={styles.workoutName}>{session.name}</Text>
-                  <Text style={styles.workoutDate}>{new Date(session.finishedAt).toLocaleDateString()}</Text>
+                
+                <View style={styles.workoutDataBlocks}>
+                  <View style={styles.workoutDataPoint}>
+                    <Text style={styles.workoutDataValue}>{session.volume.toLocaleString()}</Text>
+                    <Text style={styles.workoutDataLabel}>KG VOL</Text>
+                  </View>
+                  <View style={styles.workoutDataPoint}>
+                    <Text style={styles.workoutDataValue}>{session.duration}</Text>
+                    <Text style={styles.workoutDataLabel}>MINS</Text>
+                  </View>
                 </View>
-                <View style={styles.workoutStats}>
-                  <Text style={styles.workoutStatValue}>{session.volume.toLocaleString()} kg</Text>
-                  <Text style={styles.workoutStatLabel}>{session.duration} min</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#666" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             ))
           ) : (
             <View style={styles.emptyCard}>
-              <Ionicons name="clipboard-outline" size={32} color="#444" style={{ marginBottom: 8 }} />
-              <Text style={styles.emptyText}>NO RECENT SESSIONS</Text>
+              <Ionicons name="scan-outline" size={40} color="#333" style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyText}>NO DATA RECORDED</Text>
               <TouchableOpacity
-                style={styles.startBtn}
+                style={[styles.startBtn, { backgroundColor: theme.primary }]}
                 onPress={() => navigation.jumpTo('Training')}
+                activeOpacity={0.8}
               >
-                <Text style={styles.startBtnText}>START TRAINING</Text>
+                <Text style={styles.startBtnText}>START WORKOUT</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -244,155 +199,116 @@ export default function DashboardScreen({ navigation }) {
   );
 }
 
+// -------------------------------------------------------------
+// STYLESHEET: Dark, Gritty, Industrial Gym Aesthetic
+// -------------------------------------------------------------
 function createStyles(theme, skin, insets) {
   return StyleSheet.create({
-    page: { flex: 1, backgroundColor: theme.bgDeep },
-    content: { flex: 1, paddingHorizontal: 20 },
-
-    // Welcome Banner
-    welcomeBanner: {
-      marginTop: 20,
-      marginBottom: 24,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
+    page: { 
+      flex: 1, 
+      backgroundColor: theme.bgDeep || '#0a0a0a', 
     },
-    welcomeDate: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#888',
+    content: { 
+      flex: 1, 
+      paddingHorizontal: 16,
+    },
+
+    // --- Typography Utilities ---
+    sectionTitle: {
+      fontSize: 14,
+      fontFamily: 'System',
+      fontWeight: '900',
+      color: '#555',
+      letterSpacing: 2,
+      marginBottom: 16,
+    },
+
+    // --- Action Board (UX Overhaul) ---
+    actionBoard: {
+      marginTop: 16,
+      marginBottom: 40,
+      gap: 12,
+    },
+    primaryAction: {
+      backgroundColor: '#121212',
+      borderWidth: 2,
+      borderRadius: 6,
+      padding: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    primaryActionLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    primaryActionTextWrapper: {
+      justifyContent: 'center',
+    },
+    primaryActionTitle: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: '900',
       letterSpacing: 1,
       marginBottom: 4,
     },
-    welcomeTitle: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: '#fff',
-      letterSpacing: 0.5,
+    primaryActionSub: {
+      color: '#888',
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 1,
     },
-    streakBadge: {
+    secondaryActionsRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'rgba(255, 107, 53, 0.1)',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: 'rgba(255, 107, 53, 0.2)',
-      gap: 4,
-    },
-    streakText: {
-      fontSize: 12,
-      fontWeight: '800',
-      color: '#FF6B35',
-    },
-
-    // Grid Actions
-    gridContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
       gap: 12,
-      marginBottom: 32,
     },
-    gridItem: {
-      width: '31%',
-      backgroundColor: theme.bgCard,
-      borderRadius: 16,
+    secondaryAction: {
+      flex: 1,
+      backgroundColor: '#161616',
+      borderWidth: 1,
+      borderColor: '#2A2A2A',
+      borderRadius: 6,
       padding: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
-      height: 80,
     },
-    gridLabel: {
-      fontSize: 11,
+    secondaryActionText: {
+      color: '#AAA',
+      fontSize: 12,
       fontWeight: '800',
-      color: '#fff',
-      letterSpacing: 1,
+      letterSpacing: 1.5,
     },
 
-    // Sections
+    // --- Sections ---
     section: {
-      marginBottom: 32,
+      marginBottom: 40,
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    sectionTitle: {
-      fontSize: 12,
-      fontWeight: '800',
-      color: '#666',
-      letterSpacing: 1,
-      marginBottom: 12,
+      alignItems: 'baseline',
     },
     seeAllText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: theme.primary,
-      letterSpacing: 0.5,
-    },
-
-    // Vitals Row
-    bodyStatsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.bgCard,
-      borderRadius: 16,
-      padding: 20,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
-    },
-    bodyStatItem: {
-      flex: 1,
-      alignItems: 'center',
-    },
-    bodyStatLabel: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: '#666',
-      marginBottom: 6,
-      letterSpacing: 0.5,
-    },
-    statValueContainer: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 2,
-    },
-    bodyStatValue: {
-      fontSize: 18,
+      fontSize: 12,
       fontWeight: '800',
-      color: '#fff',
-    },
-    bodyStatUnit: {
-      fontSize: 11,
-      color: '#666',
-      fontWeight: '600',
-    },
-    verticalDivider: {
-      width: 1,
-      height: 32,
-      backgroundColor: 'rgba(255,255,255,0.1)',
+      letterSpacing: 1,
     },
 
-    // Activity Log
+    // --- Industrial Activity Panel ---
     activityPanel: {
-      backgroundColor: theme.bgCard,
-      borderRadius: 16,
-      padding: 20,
+      backgroundColor: '#161616',
+      borderRadius: 6,
+      padding: 24,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
-      height: 140,
+      borderColor: '#2A2A2A',
+      height: 160,
     },
     graphStage: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'flex-end',
       justifyContent: 'space-between',
-      gap: 8,
     },
     graphCol: {
       flex: 1,
@@ -400,95 +316,102 @@ function createStyles(theme, skin, insets) {
       justifyContent: 'flex-end',
       alignItems: 'center',
     },
-    graphBar: {
+    graphTrack: {
+      width: 12,
+      flex: 1,
+      backgroundColor: '#0a0a0a',
+      borderRadius: 2,
+      justifyContent: 'flex-end',
+      overflow: 'hidden',
+    },
+    graphFill: {
       width: '100%',
-      backgroundColor: 'rgba(255,255,255,0.05)',
-      borderRadius: 4,
-      minHeight: 4,
+      backgroundColor: '#333', 
+      borderRadius: 2,
     },
     graphDay: {
-      marginTop: 8,
-      fontSize: 10,
-      fontWeight: '700',
-      color: '#666',
+      marginTop: 12,
+      fontSize: 11,
+      fontWeight: '800',
+      color: '#555',
     },
 
-    // Recent Workouts
+    // --- Recent Workouts (Operations) ---
     workoutCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.bgCard,
-      borderRadius: 16,
+      backgroundColor: '#161616',
       padding: 16,
       marginBottom: 12,
+      borderLeftWidth: 4,
+      borderRadius: 4,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderColor: '#222',
     },
-    workoutIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: 'rgba(255,255,255,0.05)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-    },
-    workoutInfo: {
+    workoutMainInfo: {
       flex: 1,
+      paddingRight: 16,
     },
     workoutName: {
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 16,
+      fontWeight: '900',
       color: '#fff',
-      marginBottom: 2,
+      marginBottom: 4,
+      letterSpacing: 0.5,
     },
     workoutDate: {
       fontSize: 11,
-      color: '#666',
-      fontWeight: '600',
-    },
-    workoutStats: {
-      alignItems: 'flex-end',
-    },
-    workoutStatValue: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.primary,
-    },
-    workoutStatLabel: {
-      fontSize: 10,
-      color: '#666',
-      marginTop: 2,
-    },
-
-    // Empty State
-    emptyCard: {
-      backgroundColor: 'rgba(255,255,255,0.02)',
-      borderRadius: 16,
-      padding: 32,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
-      borderStyle: 'dashed',
-    },
-    emptyText: {
-      fontSize: 12,
       fontWeight: '700',
       color: '#666',
       letterSpacing: 1,
-      marginBottom: 16,
+    },
+    workoutDataBlocks: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    workoutDataPoint: {
+      alignItems: 'flex-end',
+    },
+    workoutDataValue: {
+      fontSize: 16,
+      fontWeight: '900',
+      color: '#fff',
+    },
+    workoutDataLabel: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#666',
+      letterSpacing: 1,
+      marginTop: 2,
+    },
+
+    // --- Empty State ---
+    emptyCard: {
+      backgroundColor: '#121212',
+      borderRadius: 6,
+      padding: 40,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#333',
+      borderStyle: 'dashed',
+    },
+    emptyText: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: '#555',
+      letterSpacing: 1.5,
+      marginBottom: 24,
     },
     startBtn: {
-      backgroundColor: theme.primary,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 8,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderRadius: 4,
     },
     startBtnText: {
-      fontSize: 11,
-      fontWeight: '800',
-      color: '#fff',
-      letterSpacing: 0.5,
+      fontSize: 13,
+      fontWeight: '900',
+      color: '#000', 
+      letterSpacing: 1,
     },
   });
 }

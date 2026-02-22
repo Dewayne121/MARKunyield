@@ -12,6 +12,9 @@ import {
   StatusBar,
   Linking,
   AppState,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import { EXERCISES } from '../constants/exercises';
+import { COMPETITIVE_LIFTS, resolveCompetitiveLiftId } from '../constants/competitiveLifts';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../constants/colors';
 import CustomAlert, { useCustomAlert } from '../components/CustomAlert';
 
@@ -72,9 +76,22 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
   const { alertConfig, showAlert, hideAlert } = useCustomAlert();
   const styles = createStyles(theme);
 
+  const competitiveLiftSet = new Set(COMPETITIVE_LIFTS.map((lift) => lift.id));
+  const allowedChallengeExercises = (challenge?.exercises || [])
+    .map((value) => resolveCompetitiveLiftId(value))
+    .filter(Boolean);
   const availableExercises = challenge?.challengeType === 'exercise'
-    ? EXERCISES.filter(ex => challenge.exercises?.includes(ex.id))
-    : EXERCISES;
+    ? EXERCISES.filter((exercise) => {
+        return allowedChallengeExercises.includes(exercise.id) && competitiveLiftSet.has(exercise.id);
+      })
+    : EXERCISES.filter((exercise) => competitiveLiftSet.has(exercise.id));
+
+  // Auto-select the first exercise from the challenge when component mounts
+  useEffect(() => {
+    if (challenge?.challengeType === 'exercise' && availableExercises.length > 0 && !selectedExercise) {
+      setSelectedExercise(availableExercises[0]);
+    }
+  }, [challenge?.challengeType, availableExercises]);
 
   const resetCamera = useCallback(() => {
     setCameraError('');
@@ -403,15 +420,16 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
         setBlurring(true);
         try {
           const blurResponse = await api.blurVideo(finalVideoUrl);
-          if (blurResponse.success && blurResponse.data?.blurredVideoUrl) {
-            originalVideoUrl = blurResponse.data.originalVideoUrl || finalVideoUrl;
-            finalVideoUrl = blurResponse.data.blurredVideoUrl;
-            if (blurResponse.data?.objectName) {
-              finalServerVideoId = blurResponse.data.objectName;
-            }
+          if (!blurResponse.success || !blurResponse.data?.blurredVideoUrl) {
+            throw new Error(blurResponse.error || 'Face blur failed. Entry not submitted to protect privacy.');
           }
-        } catch (blurError) {
-          console.warn('[SUBMIT] Blur error:', blurError.message);
+
+          originalVideoUrl = blurResponse.data.originalVideoUrl || finalVideoUrl;
+          finalVideoUrl = blurResponse.data.blurredVideoUrl;
+          const blurredObjectName = blurResponse.data?.objectName || blurResponse.data?.blurredObjectName;
+          if (blurredObjectName) {
+            finalServerVideoId = blurredObjectName;
+          }
         } finally {
           setBlurring(false);
         }
@@ -565,31 +583,15 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
         </View>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Challenge Summary */}
-        <View style={styles.challengeCard}>
-            <View style={styles.cardGradient}>
-                <View style={[styles.cardHighlight, { backgroundColor: theme.primary }]} />
-                <View style={styles.challengeHeader}>
-                    <View style={[styles.iconContainer, { backgroundColor: 'rgba(212, 175, 55, 0.1)' }]}>
-                        <Ionicons name="trophy" size={20} color={theme.gold} />
-                    </View>
-                    <View style={{flex: 1}}>
-                        <Text style={styles.challengeTitle}>{challenge?.title}</Text>
-                        <Text style={styles.challengeTarget}>
-                            GOAL: <Text style={{color: theme.primary}}>{challenge?.target} {challenge?.metricType?.toUpperCase()}</Text>
-                        </Text>
-                    </View>
-                </View>
-            </View>
-        </View>
-
-        {/* Media Selection */}
-        <FormSection title="EVIDENCE" required theme={theme} styles={styles}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.content}>
+            {/* Media Selection */}
+            <View style={styles.sectionContainer}>
             {videoUri ? (
                 <View style={styles.videoSuccessBox}>
                     <View style={[styles.videoSuccessIndicator, { backgroundColor: theme.success }]} />
@@ -618,17 +620,34 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
                     </TouchableOpacity>
                 </View>
             )}
-        </FormSection>
+        </View>
 
         {/* Form Fields */}
         <View style={styles.formPanel}>
+            {/* Notes section moved to TOP for visibility */}
+            <FormSection title="COMMS / NOTES" theme={theme} styles={styles}>
+                <TextInput
+                    style={[styles.operatorInput, styles.textArea]}
+                    placeholder="OPTIONAL INTEL..."
+                    placeholderTextColor={theme.textMuted}
+                    value={notes}
+                    onChangeText={setNotes}
+                    multiline
+                    numberOfLines={3}
+                    returnKeyType="done"
+                    submitBehavior="blurAndSubmit"
+                />
+            </FormSection>
+
             {challenge?.challengeType === 'exercise' && (
                 <FormSection title="EXERCISE" required theme={theme} styles={styles}>
-                    <TouchableOpacity style={styles.operatorInput} onPress={() => setShowExerciseSelector(true)}>
+                    <TouchableOpacity style={styles.operatorInput} onPress={() => availableExercises.length > 1 ? setShowExerciseSelector(true) : null}>
                         <Text style={[styles.inputText, !selectedExercise && { color: theme.textMuted }]}>
-                            {selectedExercise ? selectedExercise.name.toUpperCase() : "SELECT UNIT"}
+                            {selectedExercise ? selectedExercise.name.toUpperCase() : "SELECT EXERCISE"}
                         </Text>
-                        <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
+                        {availableExercises.length > 1 && (
+                            <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
+                        )}
                     </TouchableOpacity>
                 </FormSection>
             )}
@@ -639,7 +658,7 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
                         <FormSection title="REPS" required={challenge?.metricType === 'reps'} theme={theme} styles={styles}>
                             <TextInput
                                 style={styles.operatorInput}
-                                placeholder="0"
+                                placeholder={`0  •  Goal: ${challenge?.target || '?'} ${challenge?.metricType?.toUpperCase() || ''}`}
                                 placeholderTextColor={theme.textMuted}
                                 value={reps}
                                 onChangeText={setReps}
@@ -653,7 +672,7 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
                         <FormSection title="WEIGHT (KG)" required theme={theme} styles={styles}>
                             <TextInput
                                 style={styles.operatorInput}
-                                placeholder="0.0"
+                                placeholder={`0.0  •  Goal: ${challenge?.target || '?'} ${challenge?.metricType?.toUpperCase() || ''}`}
                                 placeholderTextColor={theme.textMuted}
                                 value={weight}
                                 onChangeText={setWeight}
@@ -668,7 +687,7 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
                 <FormSection title="DURATION (SEC)" required theme={theme} styles={styles}>
                     <TextInput
                         style={styles.operatorInput}
-                        placeholder="0"
+                        placeholder={`0  •  Goal: ${challenge?.target || '?'} ${challenge?.metricType?.toUpperCase() || ''}`}
                         placeholderTextColor={theme.textMuted}
                         value={duration}
                         onChangeText={setDuration}
@@ -676,19 +695,10 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
                     />
                 </FormSection>
             )}
-
-            <FormSection title="COMMS / NOTES" theme={theme} styles={styles}>
-                <TextInput
-                    style={[styles.operatorInput, styles.textArea]}
-                    placeholder="OPTIONAL INTEL..."
-                    placeholderTextColor={theme.textMuted}
-                    value={notes}
-                    onChangeText={setNotes}
-                    multiline
-                />
-            </FormSection>
         </View>
-      </ScrollView>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
 
       {/* Footer */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
@@ -775,6 +785,7 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
 function createStyles(theme) {
     return StyleSheet.create({
       container: { flex: 1, backgroundColor: theme.bgDeep },
+      keyboardView: { flex: 1 },
       header: { paddingHorizontal: 24, paddingBottom: 16, backgroundColor: theme.bgPanel, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
       headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
       headerTitle: { fontSize: 16, fontWeight: '800', color: theme.textMain, letterSpacing: 1 },
@@ -789,7 +800,7 @@ function createStyles(theme) {
       challengeTitle: { fontSize: 16, fontWeight: '800', color: theme.textMain, marginBottom: 4 },
       challengeTarget: { fontSize: 11, fontWeight: '700', color: theme.textMuted, letterSpacing: 1 },
 
-      sectionContainer: { marginBottom: 20 },
+      sectionContainer: { marginBottom: 20, marginTop: 16 },
       sectionHeader: { flexDirection: 'row', marginBottom: 10 },
       sectionTitle: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
       requiredMark: { marginLeft: 4, fontSize: 12 },
@@ -937,5 +948,21 @@ function createStyles(theme) {
       modalContainer: { flex: 1, backgroundColor: theme.bgDeep },
       modalItem: { padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
       modalItemText: { fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
+      contextChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: 'rgba(212, 175, 55, 0.1)',
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+      },
+      contextChipText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: theme.textMuted,
+        letterSpacing: 0.5,
+      },
     });
 }

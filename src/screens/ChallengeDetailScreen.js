@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { Typography } from '../constants/colors';
 import api from '../services/api';
 import { EXERCISES } from '../constants/exercises';
+import { getCompetitiveLiftLabel, resolveCompetitiveLiftId } from '../constants/competitiveLifts';
 import CustomAlert, { useCustomAlert } from '../components/CustomAlert';
 
 export default function ChallengeDetailScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
-  const { user } = useApp();
   const { theme } = useTheme();
   const { alertConfig, showAlert, hideAlert } = useCustomAlert();
   const { challengeId } = route.params;
@@ -32,17 +32,13 @@ export default function ChallengeDetailScreen({ navigation, route }) {
   // Initialize styles at the top level
   const styles = createStyles(theme);
 
-  useEffect(() => {
-    loadChallengeData();
-  }, [challengeId]);
-
   const loadChallengeData = async () => {
     try {
       setLoading(true);
 
       // Load challenge details
-      const challengeResponse = await api.getChallenges({ includeExpired: 'true' });
-      const found = challengeResponse.data?.find(c => getChallengeId(c) === challengeId);
+      const challengeResponse = await api.getChallengeById(challengeId);
+      const found = challengeResponse?.data || null;
       const resolvedChallengeId = getChallengeId(found) || challengeId;
 
       if (found) {
@@ -155,9 +151,30 @@ export default function ChallengeDetailScreen({ navigation, route }) {
   const getExerciseNames = () => {
     if (challenge.challengeType !== 'exercise' || !challenge.exercises?.length) return null;
     return challenge.exercises.map(exId => {
+      const liftLabel = getCompetitiveLiftLabel(resolveCompetitiveLiftId(exId));
+      if (liftLabel) return liftLabel;
       const exercise = EXERCISES.find(e => e.id === exId);
       return exercise?.name || exId;
     }).join(', ');
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadChallengeData();
+    }, [challengeId])
+  );
+
+  const getPrimaryLiftId = () => {
+    if (challenge?.primaryExercise) {
+      const resolved = resolveCompetitiveLiftId(challenge.primaryExercise);
+      if (resolved) return resolved;
+    }
+
+    const fromExercises = (challenge?.exercises || [])
+      .map((value) => resolveCompetitiveLiftId(value))
+      .filter(Boolean);
+
+    return fromExercises[0] || null;
   };
 
   const renderRankBadge = (rank) => {
@@ -192,7 +209,12 @@ export default function ChallengeDetailScreen({ navigation, route }) {
   }
 
   const timeInfo = getTimeRemaining(challenge.endDate);
-  const progressPercent = Math.min(100, (challenge.progress / challenge.target) * 100);
+  const progressPercent = challenge.target > 0
+    ? Math.min(100, (challenge.progress / challenge.target) * 100)
+    : 0;
+  const latestPendingSubmission = mySubmissions.find((submission) => submission.status === 'pending');
+  const primaryLiftId = getPrimaryLiftId();
+  const primaryLiftLabel = getCompetitiveLiftLabel(primaryLiftId);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -272,6 +294,24 @@ export default function ChallengeDetailScreen({ navigation, route }) {
                 </View>
             </View>
           </View>
+
+          {primaryLiftId && (
+            <TouchableOpacity
+              style={[styles.leaderboardShortcut, { borderColor: theme.primary }]}
+              onPress={() =>
+                navigation.navigate('Main', {
+                  screen: 'Leagues',
+                  params: { exerciseId: primaryLiftId },
+                })
+              }
+              activeOpacity={0.8}
+            >
+              <Ionicons name="barbell-outline" size={14} color={theme.primary} />
+              <Text style={[styles.leaderboardShortcutText, { color: theme.primary }]}>
+                VIEW {primaryLiftLabel?.toUpperCase()} LEADERBOARD
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Progress (if joined) */}
@@ -301,6 +341,15 @@ export default function ChallengeDetailScreen({ navigation, route }) {
              <Ionicons name="podium-outline" size={18} color={theme.textMuted} style={{ marginRight: 8 }} />
              <Text style={styles.cardTitle}>LEADERBOARD</Text>
           </View>
+
+          {latestPendingSubmission && (
+            <View style={styles.pendingLeaderboardNotice}>
+              <Ionicons name="time-outline" size={16} color="#ff9500" />
+              <Text style={styles.pendingLeaderboardNoticeText}>
+                Latest entry pending verification ({latestPendingSubmission.value}). Rank updates after approval.
+              </Text>
+            </View>
+          )}
 
           {leaderboard.length > 0 ? (
             <View style={styles.leaderboardList}>
@@ -574,6 +623,22 @@ function createStyles(theme) {
       rulesGrid: {
         gap: 16,
       },
+      leaderboardShortcut: {
+        marginTop: 14,
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+      },
+      leaderboardShortcutText: {
+        marginLeft: 8,
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
+      },
       ruleRow: {
         flexDirection: 'row',
         gap: 16,
@@ -649,6 +714,26 @@ function createStyles(theme) {
       },
       leaderboardList: {
         marginTop: -8,
+      },
+      pendingLeaderboardNotice: {
+        marginTop: 10,
+        marginBottom: 6,
+        borderWidth: 1,
+        borderRadius: 10,
+        borderColor: 'rgba(255, 149, 0, 0.4)',
+        backgroundColor: 'rgba(255, 149, 0, 0.08)',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+      },
+      pendingLeaderboardNoticeText: {
+        flex: 1,
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#ff9500',
+        letterSpacing: 0.3,
       },
       leaderboardItem: {
         flexDirection: 'row',

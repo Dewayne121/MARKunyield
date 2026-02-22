@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,13 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomAlert, { useCustomAlert } from '../../components/CustomAlert';
 import api from '../../services/api';
-import { EXERCISES, EXERCISE_CATEGORIES } from '../../constants/exercises';
+import { COMPETITIVE_LIFTS } from '../../constants/competitiveLifts';
 import {
   ADMIN_COLORS,
   ADMIN_SPACING,
@@ -36,31 +35,30 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
   const [saving, setSaving] = useState(false);
   const getChallengeId = (item) => item?.id || item?._id || null;
 
-  // Form state
+  // Form state - simplified for big 3 lifts
   const [title, setTitle] = useState(challenge?.title || '');
   const [description, setDescription] = useState(challenge?.description || '');
-  const [challengeType, setChallengeType] = useState(challenge?.challengeType || 'exercise');
-  const [selectedExercises, setSelectedExercises] = useState(challenge?.exercises || []);
-  const [customMetricName, setCustomMetricName] = useState(challenge?.customMetricName || '');
-  const [metricType, setMetricType] = useState(challenge?.metricType || 'reps');
-  const [target, setTarget] = useState(challenge?.target?.toString() || '');
-  const [startDate, setStartDate] = useState(challenge?.startDate ? new Date(challenge.startDate) : new Date());
-  const [endDate, setEndDate] = useState(challenge?.endDate ? new Date(challenge.endDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const [regionScope, setRegionScope] = useState(challenge?.regionScope || 'global');
+  const [selectedLift, setSelectedLift] = useState(challenge?.exercises?.[0] || 'bench_press');
+  const [targetWeight, setTargetWeight] = useState(
+    challenge?.target?.toString() || ''
+  );
+  const [startDate, setStartDate] = useState(
+    challenge?.startDate ? new Date(challenge.startDate) : new Date()
+  );
+  const [endDate, setEndDate] = useState(
+    challenge?.endDate
+      ? new Date(challenge.endDate)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  );
   const [reward, setReward] = useState(challenge?.reward?.toString() || '100');
   const [rules, setRules] = useState(challenge?.rules || '');
-  const [completionType, setCompletionType] = useState(challenge?.completionType || 'cumulative');
-  const [winnerCriteria, setWinnerCriteria] = useState(challenge?.winnerCriteria || 'first_to_complete');
-  const [requiresVideo, setRequiresVideo] = useState(challenge?.requiresVideo !== false);
-  const [maxParticipants, setMaxParticipants] = useState(challenge?.maxParticipants?.toString() || '0');
+  const [requiresVideo, setRequiresVideo] = useState(
+    challenge?.requiresVideo !== false
+  );
 
   // UI state
-  const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('chest');
-
-  const REGIONS = ['global', 'London', 'Manchester', 'Birmingham', 'Leeds', 'Glasgow'];
 
   const handleSave = async () => {
     // Validation
@@ -69,7 +67,7 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
         title: 'Required',
         message: 'Please enter a challenge title',
         icon: 'warning',
-        buttons: [{ text: 'OK', style: 'default' }]
+        buttons: [{ text: 'OK', style: 'default' }],
       });
       return;
     }
@@ -78,34 +76,16 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
         title: 'Required',
         message: 'Please enter a description',
         icon: 'warning',
-        buttons: [{ text: 'OK', style: 'default' }]
+        buttons: [{ text: 'OK', style: 'default' }],
       });
       return;
     }
-    if (challengeType === 'exercise' && selectedExercises.length === 0) {
+    if (!targetWeight || parseFloat(targetWeight) <= 0) {
       showAlert({
         title: 'Required',
-        message: 'Please select at least one exercise',
+        message: 'Please enter a valid target weight (kg)',
         icon: 'warning',
-        buttons: [{ text: 'OK', style: 'default' }]
-      });
-      return;
-    }
-    if (challengeType === 'custom' && !customMetricName.trim()) {
-      showAlert({
-        title: 'Required',
-        message: 'Please enter a custom metric name',
-        icon: 'warning',
-        buttons: [{ text: 'OK', style: 'default' }]
-      });
-      return;
-    }
-    if (!target || parseInt(target) <= 0) {
-      showAlert({
-        title: 'Required',
-        message: 'Please enter a valid target',
-        icon: 'warning',
-        buttons: [{ text: 'OK', style: 'default' }]
+        buttons: [{ text: 'OK', style: 'default' }],
       });
       return;
     }
@@ -114,7 +94,7 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
         title: 'Invalid',
         message: 'End date must be after start date',
         icon: 'warning',
-        buttons: [{ text: 'OK', style: 'default' }]
+        buttons: [{ text: 'OK', style: 'default' }],
       });
       return;
     }
@@ -125,20 +105,19 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
       const challengeData = {
         title: title.trim(),
         description: description.trim(),
-        challengeType,
-        exercises: challengeType === 'exercise' ? selectedExercises : [],
-        customMetricName: challengeType === 'custom' ? customMetricName.trim() : '',
-        metricType,
-        target: parseInt(target),
+        challengeType: 'exercise',
+        exercises: [selectedLift],
+        metricType: 'weight',
+        target: parseFloat(targetWeight),
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        regionScope: regionScope.toLowerCase(),
+        regionScope: 'global',
         reward: parseInt(reward) || 100,
         rules: rules.trim(),
-        completionType,
-        winnerCriteria,
+        completionType: 'best_effort', // Highest single lift wins
+        winnerCriteria: 'best_single',
         requiresVideo,
-        maxParticipants: parseInt(maxParticipants) || 0,
+        maxParticipants: 0,
       };
 
       let response;
@@ -157,10 +136,12 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
           title: 'Success',
           message: isEdit ? 'Challenge updated successfully' : 'Challenge created successfully',
           icon: 'success',
-          buttons: [{
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          }]
+          buttons: [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ],
         });
       }
     } catch (err) {
@@ -168,34 +149,26 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
         title: 'Error',
         message: err.message || 'Failed to save challenge',
         icon: 'error',
-        buttons: [{ text: 'OK', style: 'default' }]
+        buttons: [{ text: 'OK', style: 'default' }],
       });
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleExercise = (exerciseId) => {
-    setSelectedExercises(prev =>
-      prev.includes(exerciseId)
-        ? prev.filter(id => id !== exerciseId)
-        : [...prev, exerciseId]
-    );
-  };
-
-  const getFilteredExercises = () => {
-    if (!EXERCISES || !Array.isArray(EXERCISES)) return [];
-    return EXERCISES.filter(ex => ex.category === selectedCategory);
-  };
+  const selectedLiftData = COMPETITIVE_LIFTS.find((l) => l.id === selectedLift);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+    <View style={[styles.container, { paddingTop: insets.top + S.lg }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={20} color={C.white} />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>{isEdit ? 'Edit Challenge' : 'Create Challenge'}</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.pageTitle}>{isEdit ? 'EDIT CHALLENGE' : 'CREATE CHALLENGE'}</Text>
+          <Text style={styles.pageSubtitle}>COMPETITIVE LIFT CHALLENGE</Text>
+        </View>
         <TouchableOpacity
           style={[styles.saveButton, saving && styles.saveButtonDisabled]}
           onPress={handleSave}
@@ -204,25 +177,45 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
           {saving ? (
             <ActivityIndicator size="small" color={C.white} />
           ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
+            <>
+              <Ionicons name="checkmark" size={16} color={C.white} />
+              <Text style={styles.saveButtonText}>SAVE</Text>
+            </>
           )}
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Challenge Type */}
+        {/* Lift Selection - Big 3 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Challenge Type</Text>
-          <View style={styles.typeSelector}>
-            {['exercise', 'metric', 'custom'].map(type => (
+          <View style={styles.sectionHeader}>
+            <Ionicons name="barbell" size={14} color={C.accent} />
+            <Text style={styles.sectionTitle}>SELECT LIFT</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>Choose one of the big 3 compound lifts</Text>
+          <View style={styles.liftSelector}>
+            {COMPETITIVE_LIFTS.map((lift) => (
               <TouchableOpacity
-                key={type}
-                style={[styles.typeButton, challengeType === type && styles.typeButtonActive]}
-                onPress={() => setChallengeType(type)}
+                key={lift.id}
+                style={[styles.liftButton, selectedLift === lift.id && styles.liftButtonActive]}
+                onPress={() => setSelectedLift(lift.id)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.typeButtonText, challengeType === type && styles.typeButtonTextActive]}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                <View style={[styles.liftIconContainer, selectedLift === lift.id && styles.liftIconActive]}>
+                  <Ionicons
+                    name={lift.id === 'bench_press' ? 'barbell-outline' : lift.id === 'deadlift' ? 'fitness-outline' : 'trending-up-outline'}
+                    size={22}
+                    color={selectedLift === lift.id ? C.accent : C.textSubtle}
+                  />
+                </View>
+                <Text style={[styles.liftButtonText, selectedLift === lift.id && styles.liftButtonTextActive]}>
+                  {lift.label}
                 </Text>
+                {selectedLift === lift.id && (
+                  <View style={styles.liftCheckBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color={C.accent} />
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -230,168 +223,130 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
 
         {/* Title & Description */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Info</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Challenge Title"
-            placeholderTextColor={C.textSubtle}
-            value={title}
-            onChangeText={setTitle}
-          />
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Description"
-            placeholderTextColor={C.textSubtle}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        {/* Exercise Selection (for exercise challenges) */}
-        {challengeType === 'exercise' && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Exercises</Text>
-              <TouchableOpacity
-                style={styles.selectButton}
-                onPress={() => setShowExerciseSelector(true)}
-              >
-                <Text style={styles.selectButtonText}>
-                  {selectedExercises.length} selected
-                </Text>
-                <Ionicons name="chevron-forward" size={16} color={C.accent} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.exercisesScroll}>
-              {selectedExercises.map(exId => {
-                const exercise = EXERCISES.find(e => e.id === exId);
-                return exercise ? (
-                  <View key={exId} style={styles.exerciseChip}>
-                    <Text style={styles.exerciseChipText}>{exercise.name}</Text>
-                    <TouchableOpacity onPress={() => toggleExercise(exId)}>
-                      <Ionicons name="close-circle" size={16} color={C.accent} />
-                    </TouchableOpacity>
-                  </View>
-                ) : null;
-              })}
-              {selectedExercises.length === 0 && (
-                <Text style={styles.emptyText}>No exercises selected</Text>
-              )}
-            </ScrollView>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="create" size={14} color={C.info} />
+            <Text style={styles.sectionTitle}>CHALLENGE DETAILS</Text>
           </View>
-        )}
-
-        {/* Custom Metric Name (for custom challenges) */}
-        {challengeType === 'custom' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Custom Metric Name</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>TITLE</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g., Plank Hold, Sprint Distance"
+              placeholder="Enter challenge title..."
               placeholderTextColor={C.textSubtle}
-              value={customMetricName}
-              onChangeText={setCustomMetricName}
+              value={title}
+              onChangeText={setTitle}
             />
           </View>
-        )}
-
-        {/* Metric Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Metric Type</Text>
-          <View style={styles.metricSelector}>
-            {['reps', 'weight', 'duration', 'workouts'].map(type => (
-              <TouchableOpacity
-                key={type}
-                style={[styles.metricButton, metricType === type && styles.metricButtonActive]}
-                onPress={() => setMetricType(type)}
-              >
-                <Text style={[styles.metricButtonText, metricType === type && styles.metricButtonTextActive]}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>DESCRIPTION</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Describe what competitors need to achieve..."
+              placeholderTextColor={C.textSubtle}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={3}
+            />
           </View>
         </View>
 
-        {/* Target */}
+        {/* Target Weight */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Target</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="trophy" size={14} color={C.warning} />
+            <Text style={styles.sectionTitle}>TARGET WEIGHT</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>
+            The weight competitors must lift (in kg)
+          </Text>
           <View style={styles.targetInputContainer}>
             <TextInput
               style={styles.targetInput}
               placeholder="0"
               placeholderTextColor={C.textSubtle}
-              value={target}
-              onChangeText={setTarget}
+              value={targetWeight}
+              onChangeText={setTargetWeight}
               keyboardType="numeric"
             />
-            <Text style={styles.targetUnit}>
-              {metricType === 'reps' ? 'reps' : metricType === 'weight' ? 'kg' : metricType === 'duration' ? 'seconds' : 'sessions'}
-            </Text>
+            <View style={styles.targetUnitBadge}>
+              <Text style={styles.targetUnit}>KG</Text>
+            </View>
           </View>
+          {targetWeight && parseFloat(targetWeight) > 0 && (
+            <View style={styles.targetHint}>
+              <Ionicons name="information-circle" size={14} color={C.textSubtle} />
+              <Text style={styles.targetHintText}>
+                Competitors must lift {targetWeight}kg in {selectedLiftData?.label || 'the selected lift'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Dates */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Duration</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar" size={14} color={C.success} />
+            <Text style={styles.sectionTitle}>CHALLENGE DURATION</Text>
+          </View>
           <TouchableOpacity
             style={styles.dateButton}
             onPress={() => setShowStartDatePicker(true)}
+            activeOpacity={0.7}
           >
-            <Ionicons name="calendar" size={20} color={C.textSubtle} />
-            <Text style={styles.dateButtonText}>
-              Start: {startDate.toLocaleDateString()}
-            </Text>
+            <View style={styles.dateButtonLeft}>
+              <View style={[styles.dateIconBadge, { backgroundColor: C.success + '20' }]}>
+                <Ionicons name="play" size={12} color={C.success} />
+              </View>
+              <Text style={styles.dateButtonLabel}>START DATE</Text>
+            </View>
+            <Text style={styles.dateButtonValue}>{startDate.toLocaleDateString()}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.dateButton}
             onPress={() => setShowEndDatePicker(true)}
+            activeOpacity={0.7}
           >
-            <Ionicons name="calendar" size={20} color={C.textSubtle} />
-            <Text style={styles.dateButtonText}>
-              End: {endDate.toLocaleDateString()}
-            </Text>
+            <View style={styles.dateButtonLeft}>
+              <View style={[styles.dateIconBadge, { backgroundColor: C.danger + '20' }]}>
+                <Ionicons name="stop" size={12} color={C.danger} />
+              </View>
+              <Text style={styles.dateButtonLabel}>END DATE</Text>
+            </View>
+            <Text style={styles.dateButtonValue}>{endDate.toLocaleDateString()}</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Region */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Region Scope</Text>
-          <View style={styles.metricSelector}>
-            {REGIONS.map(region => (
-              <TouchableOpacity
-                key={region}
-                style={[styles.metricButton, regionScope === region.toLowerCase() && styles.metricButtonActive]}
-                onPress={() => setRegionScope(region.toLowerCase())}
-              >
-                <Text style={[styles.metricButtonText, regionScope === region.toLowerCase() && styles.metricButtonTextActive]}>
-                  {region}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
         {/* Reward */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reward Points</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="100"
-            placeholderTextColor={C.textSubtle}
-            value={reward}
-            onChangeText={setReward}
-            keyboardType="numeric"
-          />
+          <View style={styles.sectionHeader}>
+            <Ionicons name="star" size={14} color={C.warning} />
+            <Text style={styles.sectionTitle}>REWARD POINTS</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>
+            Bonus points awarded when challenge is completed
+          </Text>
+          <View style={styles.rewardInputContainer}>
+            <TextInput
+              style={styles.rewardInput}
+              placeholder="100"
+              placeholderTextColor={C.textSubtle}
+              value={reward}
+              onChangeText={setReward}
+              keyboardType="numeric"
+            />
+            <Text style={styles.rewardUnit}>XP</Text>
+          </View>
         </View>
 
         {/* Rules */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rules (Optional)</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="document-text" size={14} color={C.textSubtle} />
+            <Text style={styles.sectionTitle}>RULES (OPTIONAL)</Text>
+          </View>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, styles.rulesInput]}
             placeholder="Enter any specific rules or requirements..."
             placeholderTextColor={C.textSubtle}
             value={rules}
@@ -401,45 +356,47 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Completion Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Completion Type</Text>
-          <View style={styles.optionsContainer}>
-            {[
-              { value: 'cumulative', label: 'Cumulative', desc: 'Add up all submissions' },
-              { value: 'single_session', label: 'Single Session', desc: 'Best single session counts' },
-              { value: 'best_effort', label: 'Best Effort', desc: 'Highest single submission wins' },
-            ].map(option => (
-              <TouchableOpacity
-                key={option.value}
-                style={[styles.optionCard, completionType === option.value && styles.optionCardActive]}
-                onPress={() => setCompletionType(option.value)}
-              >
-                <Text style={[styles.optionTitle, completionType === option.value && styles.optionTitleActive]}>
-                  {option.label}
-                </Text>
-                <Text style={styles.optionDesc}>{option.desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* Video Requirement */}
         <View style={styles.section}>
-          <View style={styles.toggleRow}>
-            <Text style={styles.sectionTitle}>Require Video Proof</Text>
+          <View style={styles.toggleCard}>
+            <View style={styles.toggleLeft}>
+              <View style={[styles.toggleIconBadge, requiresVideo && { backgroundColor: C.accent + '20' }]}>
+                <Ionicons name="videocam" size={18} color={requiresVideo ? C.accent : C.textSubtle} />
+              </View>
+              <View>
+                <Text style={styles.toggleLabel}>Require Video Proof</Text>
+                <Text style={styles.toggleHint}>All lifts must be verified via video</Text>
+              </View>
+            </View>
             <TouchableOpacity
               style={[styles.toggle, requiresVideo && styles.toggleActive]}
               onPress={() => setRequiresVideo(!requiresVideo)}
+              activeOpacity={0.7}
             >
               <Ionicons
-                name={requiresVideo ? "checkmark" : "close"}
-                size={20}
+                name={requiresVideo ? 'checkmark' : 'close'}
+                size={16}
                 color={requiresVideo ? C.black : C.textSubtle}
               />
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Info Box */}
+        <View style={styles.infoBox}>
+          <View style={styles.infoBoxIcon}>
+            <Ionicons name="information-circle" size={20} color={C.accent} />
+          </View>
+          <View style={styles.infoBoxContent}>
+            <Text style={styles.infoTitle}>CHALLENGE FORMAT</Text>
+            <Text style={styles.infoText}>
+              Challenges are <Text style={styles.infoHighlight}>best effort</Text> - the highest
+              single lift above the target weight wins. All submissions require video verification.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
 
       {/* Date Pickers */}
@@ -466,62 +423,6 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
         />
       )}
 
-      {/* Exercise Selector Modal */}
-      <Modal visible={showExerciseSelector} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Exercises</Text>
-              <TouchableOpacity onPress={() => setShowExerciseSelector(false)}>
-                <Ionicons name="close" size={28} color={C.white} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Category Tabs */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-              {Object.entries(EXERCISE_CATEGORIES).map(([key, label]) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[styles.categoryTab, selectedCategory === key && styles.categoryTabActive]}
-                  onPress={() => setSelectedCategory(key)}
-                >
-                  <Text style={[styles.categoryTabText, selectedCategory === key && styles.categoryTabTextActive]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Exercise List */}
-            <ScrollView style={styles.exerciseList}>
-              {getFilteredExercises().map(exercise => (
-                <TouchableOpacity
-                  key={exercise.id}
-                  style={[styles.exerciseItem, selectedExercises.includes(exercise.id) && styles.exerciseItemActive]}
-                  onPress={() => toggleExercise(exercise.id)}
-                >
-                  <Text style={[styles.exerciseName, selectedExercises.includes(exercise.id) && styles.exerciseNameActive]}>
-                    {exercise.name}
-                  </Text>
-                  {selectedExercises.includes(exercise.id) && (
-                    <Ionicons name="checkbox" size={24} color={C.accent} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.modalDoneButton}
-              onPress={() => setShowExerciseSelector(false)}
-            >
-              <Text style={styles.modalDoneButtonText}>
-                Done ({selectedExercises.length} selected)
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
       {/* Custom Alert */}
       <CustomAlert {...alertConfig} onClose={hideAlert} />
     </View>
@@ -530,214 +431,351 @@ export default function ChallengeBuilderScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: ADMIN_SURFACES.page,
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: S.xl,
-    paddingBottom: S.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: S.lg,
+    backgroundColor: C.panel,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
   backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: R.sm,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.border,
   },
-  pageTitle: {
+  headerCenter: {
     flex: 1,
-    textAlign: 'center',
-    ...T.h2,
+    marginLeft: S.md,
+  },
+  pageTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: 1,
+  },
+  pageSubtitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.textSubtle,
+    letterSpacing: 2,
+    marginTop: 2,
   },
   saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: C.accent,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: R.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: R.sm,
+    gap: 4,
   },
   saveButtonDisabled: {
     backgroundColor: C.surface,
   },
   saveButtonText: {
     color: C.white,
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 12,
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
-  content: { flex: 1, padding: S.xl },
-  section: { marginBottom: S.xl },
+
+  // Content
+  content: {
+    flex: 1,
+    padding: S.xl,
+  },
+  bottomSpacer: {
+    height: 60,
+  },
+
+  // Section
+  section: {
+    marginBottom: S.xl,
+  },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
+    gap: S.xs,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 2,
+  },
+  sectionSubtitle: {
+    fontSize: 11,
+    color: C.textSubtle,
     marginBottom: 12,
+    marginTop: 4,
   },
-  sectionTitle: { ...T.caption, marginBottom: 10 },
-  typeSelector: { flexDirection: 'row', gap: 8 },
-  typeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: R.md,
-    backgroundColor: C.card,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: C.border,
+
+  // Lift Selector
+  liftSelector: {
+    gap: 10,
+    marginTop: 8,
   },
-  typeButtonActive: { backgroundColor: C.accentSoft, borderColor: C.accent },
-  typeButtonText: { fontSize: 11, fontWeight: '600', color: C.textSubtle },
-  typeButtonTextActive: { color: C.accent },
-  input: {
-    backgroundColor: C.panel,
-    borderRadius: R.md,
-    padding: 12,
-    color: C.text,
-    fontSize: 13,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  textArea: { minHeight: 80, textAlignVertical: 'top' },
-  selectButton: { flexDirection: 'row', alignItems: 'center' },
-  selectButtonText: { fontSize: 11, color: C.accent, fontWeight: '600' },
-  exercisesScroll: { maxHeight: 40 },
-  exerciseChip: {
+  liftButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.surface,
-    borderRadius: R.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  exerciseChipText: { fontSize: 11, color: C.text, marginRight: 6 },
-  emptyText: { fontSize: 11, color: C.textSubtle, fontStyle: 'italic' },
-  metricSelector: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metricButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: R.pill,
     backgroundColor: C.card,
+    borderRadius: R.sm,
+    padding: 14,
     borderWidth: 1,
     borderColor: C.border,
   },
-  metricButtonActive: { backgroundColor: C.accentSoft, borderColor: C.accent },
-  metricButtonText: { fontSize: 11, fontWeight: '600', color: C.textSubtle },
-  metricButtonTextActive: { color: C.accent },
+  liftButtonActive: {
+    borderColor: C.accent,
+    backgroundColor: C.accent + '10',
+  },
+  liftIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: R.xs,
+    backgroundColor: C.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: S.md,
+  },
+  liftIconActive: {
+    backgroundColor: C.accent + '20',
+  },
+  liftButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.textSubtle,
+  },
+  liftButtonTextActive: {
+    color: C.text,
+  },
+  liftCheckBadge: {
+    marginLeft: S.sm,
+  },
+
+  // Input
+  inputGroup: {
+    marginBottom: 12,
+  },
+  inputLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 1.5,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: C.panel,
+    borderRadius: R.sm,
+    padding: 12,
+    color: C.text,
+    fontSize: 14,
+    fontWeight: '500',
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  rulesInput: {
+    minHeight: 100,
+  },
+
+  // Target Input
   targetInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.panel,
-    borderRadius: R.md,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: C.border,
+    backgroundColor: C.card,
+    borderRadius: R.sm,
+    borderWidth: 2,
+    borderColor: C.accent,
+    overflow: 'hidden',
   },
-  targetInput: { flex: 1, fontSize: 14, color: C.text },
-  targetUnit: { fontSize: 12, color: C.textSubtle, marginLeft: 8 },
+  targetInput: {
+    flex: 1,
+    fontSize: 28,
+    fontWeight: '900',
+    color: C.text,
+    padding: 16,
+    textAlign: 'center',
+  },
+  targetUnitBadge: {
+    backgroundColor: C.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+  },
+  targetUnit: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: C.white,
+    letterSpacing: 1,
+  },
+  targetHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 6,
+  },
+  targetHintText: {
+    fontSize: 11,
+    color: C.textSubtle,
+    fontStyle: 'italic',
+    flex: 1,
+  },
+
+  // Date Button
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.panel,
-    borderRadius: R.md,
-    padding: 12,
+    justifyContent: 'space-between',
+    backgroundColor: C.card,
+    borderRadius: R.sm,
+    padding: 14,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: C.border,
   },
-  dateButtonText: { fontSize: 12, color: C.text, marginLeft: 10 },
-  optionsContainer: { gap: 8 },
-  optionCard: {
-    backgroundColor: C.card,
-    borderRadius: R.md,
+  dateButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateIconBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: R.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: S.sm,
+  },
+  dateButtonLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.textSubtle,
+    letterSpacing: 1,
+  },
+  dateButtonValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.text,
+  },
+
+  // Reward Input
+  rewardInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.panel,
+    borderRadius: R.sm,
     padding: 12,
     borderWidth: 1,
     borderColor: C.border,
   },
-  optionCardActive: { borderColor: C.accent },
-  optionTitle: { fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 4 },
-  optionTitleActive: { color: C.accent },
-  optionDesc: { fontSize: 11, color: C.textSubtle },
-  toggleRow: {
+  rewardInput: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: C.warning,
+    textAlign: 'center',
+  },
+  rewardUnit: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: C.warning,
+    marginLeft: 8,
+    letterSpacing: 1,
+  },
+
+  // Toggle Card
+  toggleCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: C.card,
-    borderRadius: R.md,
-    padding: 12,
+    borderRadius: R.sm,
+    padding: 14,
     borderWidth: 1,
     borderColor: C.border,
   },
+  toggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  toggleIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: R.xs,
+    backgroundColor: C.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: S.md,
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.text,
+  },
+  toggleHint: {
+    fontSize: 11,
+    color: C.textSubtle,
+    marginTop: 2,
+  },
   toggle: {
-    width: 46,
+    width: 44,
     height: 26,
     borderRadius: 13,
     backgroundColor: C.surface,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  toggleActive: { backgroundColor: C.accent },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: C.panel,
-    borderTopLeftRadius: R.xl,
-    borderTopRightRadius: R.xl,
-    height: '80%',
-    paddingTop: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: S.xl,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.border,
-  },
-  modalTitle: { ...T.h2 },
-  categoryScroll: { paddingHorizontal: S.xl, paddingVertical: 12 },
-  categoryTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: R.pill,
-    backgroundColor: C.card,
-    marginRight: 8,
     borderWidth: 1,
     borderColor: C.border,
   },
-  categoryTabActive: { backgroundColor: C.accentSoft, borderColor: C.accent },
-  categoryTabText: { fontSize: 11, fontWeight: '600', color: C.textSubtle },
-  categoryTabTextActive: { color: C.accent },
-  exerciseList: { flex: 1, padding: S.xl },
-  exerciseItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: C.card,
-    borderRadius: R.md,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  exerciseItemActive: { borderColor: C.accent },
-  exerciseName: { fontSize: 13, color: C.textSubtle },
-  exerciseNameActive: { color: C.text, fontWeight: '600' },
-  modalDoneButton: {
+  toggleActive: {
     backgroundColor: C.accent,
-    margin: S.xl,
-    padding: 14,
-    borderRadius: R.md,
-    alignItems: 'center',
+    borderColor: C.accent,
   },
-  modalDoneButtonText: { fontSize: 14, fontWeight: '700', color: C.white, letterSpacing: 0.6 },
+
+  // Info Box
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: C.card,
+    borderRadius: R.sm,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    marginBottom: S.xl,
+  },
+  infoBoxIcon: {
+    marginRight: S.md,
+    marginTop: 2,
+  },
+  infoBoxContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 12,
+    color: C.textSubtle,
+    lineHeight: 18,
+  },
+  infoHighlight: {
+    color: C.accent,
+    fontWeight: '700',
+  },
 });

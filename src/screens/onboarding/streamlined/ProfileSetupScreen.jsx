@@ -336,16 +336,19 @@ const styles = StyleSheet.create({
   photo: {
     width: 100,
     height: 100,
-    borderRadius: 50,
+    borderRadius: 6,
   },
   photoPlaceholder: {
     width: 100,
     height: 100,
-    borderRadius: 50,
+    borderRadius: 6,
     borderWidth: 2,
+    borderTopWidth: 3,
+    borderLeftWidth: 4,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#161616',
   },
   photoEditButton: {
     position: 'absolute',
@@ -353,7 +356,7 @@ const styles = StyleSheet.create({
     right: 2,
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -371,7 +374,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarWrapper: {
-    borderRadius: 24,
+    borderRadius: 6,
     borderWidth: 2,
     overflow: 'hidden',
   },
@@ -384,14 +387,19 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...Typography.body,
-    fontWeight: '600',
+    fontWeight: '900',
+    letterSpacing: 1,
     marginBottom: Spacing.sm,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: BorderRadius.lg,
+    borderTopWidth: 2,
+    borderLeftWidth: 3,
+    borderColor: '#333',
+    borderRadius: 4,
+    backgroundColor: '#161616',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
   },
@@ -414,8 +422,12 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.xs,
   },
   previewCard: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: 6,
     borderWidth: 1,
+    borderTopWidth: 2,
+    borderLeftWidth: 4,
+    borderColor: '#333',
+    backgroundColor: '#161616',
     padding: Spacing.md,
   },
   previewLabel: {
@@ -438,12 +450,12 @@ const styles = StyleSheet.create({
   previewPhoto: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 4,
   },
   previewPhotoPlaceholder: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -468,7 +480,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 4,
+    borderTopWidth: 2,
+    borderLeftWidth: 3,
     gap: Spacing.sm,
   },
   continueButtonDisabled: {
@@ -476,8 +490,9 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     ...Typography.body,
-    fontWeight: '700',
-    fontSize: 17,
+    fontWeight: '900',
+    fontSize: 16,
+    letterSpacing: 1,
   },
 });
 

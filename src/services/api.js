@@ -1,10 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Production API URL (Railway)
-const API_BASE_URL = 'https://unyielding-api-production.up.railway.app';
+// ============================================
+// API URL CONFIGURATION
+// ============================================
+// Option 1: Use environment variable (recommended)
+// Set EXPO_PUBLIC_API_URL in your .env file or app.json
+//
+// Option 2: Uncomment one of the lines below:
+//
 
-// Local development server (uncomment for local development)
+// Production (Railway)
+// const API_BASE_URL = 'https://unyielding-api-production.up.railway.app';
+
+// Local development
 // const API_BASE_URL = 'http://localhost:3000';
+
+// Use environment variable or default to production
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://unyielding-api-production.up.railway.app';
 
 const TOKEN_KEY = 'unyield_auth_token';
 
@@ -309,6 +321,10 @@ class ApiService {
   async getChallenges(params = {}) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/api/challenges${query ? `?${query}` : ''}`);
+  }
+
+  async getChallengeById(id) {
+    return this.request(`/api/challenges/${id}`);
   }
 
   async joinChallenge(id) {
@@ -707,36 +723,19 @@ class ApiService {
   // Blur faces in video using the Python faceblurapi service
   async blurVideo(videoUrl) {
     console.log('[API] blurVideo called with videoUrl:', videoUrl?.substring(0, 50) + '...');
-
-    const FACE_BLUR_API_URL = process.env.EXPO_PUBLIC_FACE_BLUR_API_URL || 'https://unyield-faceblur-api-production.up.railway.app';
+    if (!videoUrl) {
+      return { success: false, error: 'videoUrl is required' };
+    }
 
     try {
-      const response = await fetch(`${FACE_BLUR_API_URL}/blur`, {
+      const data = await this.request('/api/videos/blur', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ videoUrl }),
+        timeout: BLUR_TIMEOUT,
+        retries: 3, // Allow retries for network issues when app resumes from background
       });
 
-      const data = await response.json();
       console.log('[API] blurVideo response:', data.success ? 'success' : data.error);
-
-      // Transform response to match expected format
-      if (data.success && data.data) {
-        return {
-          success: true,
-          data: {
-            blurredVideoUrl: data.data.blurredVideoUrl,
-            originalVideoUrl: data.data.originalVideoUrl,
-            facesFound: data.data.facesDetected,
-            facesDetected: data.data.facesDetected,
-            framesProcessed: data.data.framesProcessed,
-            processingTimeMs: data.data.processingTimeMs,
-          }
-        };
-      }
-
       return data;
     } catch (error) {
       console.error('[API] blurVideo error:', error);

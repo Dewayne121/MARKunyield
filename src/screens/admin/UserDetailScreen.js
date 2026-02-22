@@ -276,15 +276,21 @@ export default function UserDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={20} color={C.white} />
+            <Ionicons name="arrow-back" size={20} color={C.text} />
           </TouchableOpacity>
-          <Text style={styles.pageTitle}>User Details</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.pageTitle}>USER DETAILS</Text>
+            <Text style={styles.pageSubtitle}>Profile management</Text>
+          </View>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={C.accent} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={C.accent} />
+            <Text style={styles.loadingText}>Loading user data...</Text>
+          </View>
         </View>
       </View>
     );
@@ -293,37 +299,55 @@ export default function UserDetailScreen({ route, navigation }) {
   if (!userData) {
     return (
       <View style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={20} color={C.white} />
+            <Ionicons name="arrow-back" size={20} color={C.text} />
           </TouchableOpacity>
-          <Text style={styles.pageTitle}>User Details</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.pageTitle}>USER DETAILS</Text>
+            <Text style={styles.pageSubtitle}>Profile management</Text>
+          </View>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>User not found</Text>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="person-outline" size={36} color={C.textSubtle} />
+            </View>
+            <Text style={styles.emptyTitle}>User not found</Text>
+            <Text style={styles.emptySubtext}>The requested user does not exist</Text>
+          </View>
         </View>
       </View>
     );
   }
 
-  const InfoRow = ({ label, value, onEdit, editable = true, field }) => (
+  const InfoRow = ({ label, value, onEdit, editable = true, field, icon }) => (
     <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
+      <View style={styles.infoLabelContainer}>
+        {icon && <Ionicons name={icon} size={14} color={C.textSubtle} style={styles.infoIcon} />}
+        <Text style={styles.infoLabel}>{label}</Text>
+      </View>
       <TouchableOpacity
         style={styles.infoValueContainer}
         onPress={editable && onEdit ? () => onEdit(field || label.toLowerCase(), value) : undefined}
         disabled={!editable || !onEdit}
       >
         <Text style={styles.infoValue}>{value ?? 'Not set'}</Text>
-        {editable && onEdit && <Ionicons name="pencil" size={14} color={C.textSubtle} />}
+        {editable && onEdit && (
+          <View style={styles.editIconContainer}>
+            <Ionicons name="pencil" size={12} color={C.textSubtle} />
+          </View>
+        )}
       </TouchableOpacity>
     </View>
   );
 
   const StatBox = ({ label, value, icon, color }) => (
     <View style={styles.statBox}>
-      <Ionicons name={icon} size={20} color={color} />
+      <View style={[styles.statBoxIcon, { backgroundColor: `${color}15`, borderColor: `${color}30` }]}>
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
       <Text style={styles.statBoxValue}>{value}</Text>
       <Text style={styles.statBoxLabel}>{label}</Text>
     </View>
@@ -332,14 +356,19 @@ export default function UserDetailScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={20} color={C.white} />
+          <Ionicons name="arrow-back" size={20} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>User Details</Text>
-        <TouchableOpacity onPress={handleSendNotification} style={styles.notifyButton}>
-          <Ionicons name="notifications" size={20} color={C.white} />
-        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.pageTitle}>USER DETAILS</Text>
+          <Text style={styles.pageSubtitle}>Profile management</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleSendNotification} style={styles.headerActionButton}>
+            <Ionicons name="notifications-outline" size={18} color={C.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -349,61 +378,67 @@ export default function UserDetailScreen({ route, navigation }) {
       >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            {userData.profileImage ? (
-              <Image source={{ uri: userData.profileImage }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: C.accent }]}>
-                <Text style={styles.avatarInitial}>
-                  {String(userData.name || userData.username || 'U').charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{String(userData.name || 'Unknown')}</Text>
-            <Text style={styles.profileHandle}>@{String(userData.username || 'unknown')}</Text>
-            <View style={styles.profileBadges}>
-              {userData.accolades?.map((accolade, index) => (
-                <View key={index} style={styles.accoladeBadge}>
-                  <Ionicons name="shield" size={10} color={C.white} />
-                  <Text style={styles.accoladeBadgeText}>{getAccoladeLabel(accolade)}</Text>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarContainer}>
+              {userData.profileImage ? (
+                <Image source={{ uri: userData.profileImage }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarInitial}>
+                    {String(userData.name || userData.username || 'U').charAt(0).toUpperCase()}
+                  </Text>
                 </View>
-              ))}
+              )}
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{String(userData.name || 'Unknown')}</Text>
+              <Text style={styles.profileHandle}>@{String(userData.username || 'unknown')}</Text>
+              <View style={styles.profileBadges}>
+                {userData.accolades?.map((accolade, index) => (
+                  <View key={index} style={styles.accoladeBadge}>
+                    <Ionicons name="shield" size={8} color={C.white} />
+                    <Text style={styles.accoladeBadgeText}>{getAccoladeLabel(accolade)}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
-
-          <View style={styles.profileActions}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleDeleteUser}>
-              <Ionicons name="trash-outline" size={20} color={C.accent} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteUser}>
+            <Ionicons name="trash-outline" size={18} color={C.accent} />
+          </TouchableOpacity>
         </View>
 
         {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <StatBox label="Total XP" value={userData.totalPoints || 0} icon="trophy" color={C.warning} />
-          <StatBox label="Weekly XP" value={userData.weeklyPoints || 0} icon="calendar" color={C.success} />
-          <StatBox label="Rank" value={`#${userData.rank || 99}`} icon="medal" color={C.warning} />
-          <StatBox label="Streak" value={userData.streak || 0} icon="flame" color={C.danger} />
-          <StatBox label="Best Streak" value={userData.streakBest || 0} icon="star" color={C.info} />
-          <StatBox label="Workouts" value={userData.workoutCount || 0} icon="fitness" color={C.info} />
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>PERFORMANCE STATS</Text>
+          <View style={styles.statsGrid}>
+            <StatBox label="Total XP" value={userData.totalPoints || 0} icon="trophy" color={C.warning} />
+            <StatBox label="Weekly XP" value={userData.weeklyPoints || 0} icon="calendar" color={C.success} />
+            <StatBox label="Rank" value={`#${userData.rank || 99}`} icon="medal" color={C.info} />
+            <StatBox label="Streak" value={userData.streak || 0} icon="flame" color={C.danger} />
+            <StatBox label="Best Streak" value={userData.streakBest || 0} icon="star" color={C.warning} />
+            <StatBox label="Workouts" value={userData.workoutCount || 0} icon="fitness" color={C.info} />
+          </View>
         </View>
 
         {/* Basic Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+          <Text style={styles.sectionTitle}>BASIC INFORMATION</Text>
           <View style={styles.infoCard}>
-            <InfoRow label="Name" value={userData.name} onEdit={handleEdit} field="name" />
-            <InfoRow label="Username" value={userData.username} onEdit={handleEdit} field="username" />
-            <InfoRow label="Email" value={userData.email} onEdit={handleEdit} field="email" />
-            <InfoRow label="Bio" value={userData.bio} onEdit={handleEdit} field="bio" />
-            <InfoRow label="Weight (kg)" value={userData.weight} onEdit={handleEdit} field="weight" />
-            <InfoRow label="Height (cm)" value={userData.height} onEdit={handleEdit} field="height" />
-            <InfoRow label="Age" value={userData.age} onEdit={handleEdit} field="age" />
+            <InfoRow label="Name" value={userData.name} onEdit={handleEdit} field="name" icon="person" />
+            <InfoRow label="Username" value={userData.username} onEdit={handleEdit} field="username" icon="at" />
+            <InfoRow label="Email" value={userData.email} onEdit={handleEdit} field="email" icon="mail" />
+            <InfoRow label="Bio" value={userData.bio} onEdit={handleEdit} field="bio" icon="text" />
+            <InfoRow label="Weight (kg)" value={userData.weight} onEdit={handleEdit} field="weight" icon="barbell" />
+            <InfoRow label="Height (cm)" value={userData.height} onEdit={handleEdit} field="height" icon="resize" />
+            <InfoRow label="Age" value={userData.age} onEdit={handleEdit} field="age" icon="calendar-number" />
+
+            {/* Region Selector */}
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Region</Text>
+              <View style={styles.infoLabelContainer}>
+                <Ionicons name="location" size={14} color={C.textSubtle} style={styles.infoIcon} />
+                <Text style={styles.infoLabel}>Region</Text>
+              </View>
               <View style={styles.dropdownContainer}>
                 {REGIONS.map(region => (
                   <TouchableOpacity
@@ -426,20 +461,20 @@ export default function UserDetailScreen({ route, navigation }) {
                       }
                     }}
                   >
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        userData.region === region && styles.dropdownItemTextSelected,
-                      ]}
-                    >
+                    <Text style={[styles.dropdownItemText, userData.region === region && styles.dropdownItemTextSelected]}>
                       {region}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
+
+            {/* Goal Selector */}
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Goal</Text>
+              <View style={styles.infoLabelContainer}>
+                <Ionicons name="flag" size={14} color={C.textSubtle} style={styles.infoIcon} />
+                <Text style={styles.infoLabel}>Goal</Text>
+              </View>
               <View style={styles.dropdownContainer}>
                 {GOALS.map(goal => (
                   <TouchableOpacity
@@ -462,83 +497,83 @@ export default function UserDetailScreen({ route, navigation }) {
                       }
                     }}
                   >
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        userData.goal === goal && styles.dropdownItemTextSelected,
-                      ]}
-                    >
+                    <Text style={[styles.dropdownItemText, userData.goal === goal && styles.dropdownItemTextSelected]}>
                       {goal}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
-            <InfoRow label="Provider" value={userData.provider} editable={false} />
+
+            <InfoRow label="Provider" value={userData.provider} editable={false} icon="key" />
             <InfoRow
               label="Joined"
               value={new Date(userData.createdAt).toLocaleDateString()}
               editable={false}
+              icon="calendar"
             />
           </View>
         </View>
 
         {/* Game Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Game Stats</Text>
+          <Text style={styles.sectionTitle}>GAME STATS</Text>
           <View style={styles.infoCard}>
-            <InfoRow label="Total Points" value={userData.totalPoints} onEdit={handleEdit} field="totalPoints" />
-            <InfoRow label="Weekly Points" value={userData.weeklyPoints} onEdit={handleEdit} field="weeklyPoints" />
-            <InfoRow label="Rank" value={userData.rank} onEdit={handleEdit} field="rank" />
-            <InfoRow label="Streak" value={userData.streak} onEdit={handleEdit} field="streak" />
-            <InfoRow label="Best Streak" value={userData.streakBest} onEdit={handleEdit} field="streakBest" />
+            <InfoRow label="Total Points" value={userData.totalPoints} onEdit={handleEdit} field="totalPoints" icon="star" />
+            <InfoRow label="Weekly Points" value={userData.weeklyPoints} onEdit={handleEdit} field="weeklyPoints" icon="trending-up" />
+            <InfoRow label="Rank" value={userData.rank} onEdit={handleEdit} field="rank" icon="medal" />
+            <InfoRow label="Streak" value={userData.streak} onEdit={handleEdit} field="streak" icon="flame" />
+            <InfoRow label="Best Streak" value={userData.streakBest} onEdit={handleEdit} field="streakBest" icon="ribbon" />
           </View>
         </View>
 
         {/* Accolades Management */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Accolades</Text>
-          <View style={styles.accoladesDisplay}>
-            {userData.accolades?.map((accolade, index) => (
-              <View key={index} style={styles.accoladeBadgeSmall}>
-                <Ionicons name="shield" size={10} color={C.white} />
-                <Text style={styles.accoladeBadgeTextSmall}>{getAccoladeLabel(accolade)}</Text>
-              </View>
-            ))}
-            {(!userData.accolades || userData.accolades.length === 0) && (
-              <Text style={styles.noAccoladesText}>No accolades assigned</Text>
-            )}
+          <Text style={styles.sectionTitle}>ACCOLADES</Text>
+          <View style={styles.accoladesCard}>
+            <View style={styles.accoladesDisplay}>
+              {userData.accolades?.map((accolade, index) => (
+                <View key={index} style={styles.accoladeBadgeLarge}>
+                  <Ionicons name="shield-checkmark" size={12} color={C.white} />
+                  <Text style={styles.accoladeBadgeTextLarge}>{getAccoladeLabel(accolade)}</Text>
+                </View>
+              ))}
+              {(!userData.accolades || userData.accolades.length === 0) && (
+                <Text style={styles.noAccoladesText}>No accolades assigned</Text>
+              )}
+            </View>
+            <TouchableOpacity style={styles.manageAccoladesButton} onPress={handleOpenAccoladePicker}>
+              <Ionicons name="shield-checkmark" size={18} color={C.accent} />
+              <Text style={styles.manageAccoladesText}>Manage Accolades</Text>
+              <Ionicons name="chevron-forward" size={16} color={C.accent} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={styles.manageAccoladesButton}
-            onPress={handleOpenAccoladePicker}
-          >
-            <Ionicons name="shield-checkmark" size={18} color={C.accent} />
-            <Text style={styles.manageAccoladesText}>Manage Accolades</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Video Stats */}
         {userData.videos && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Videos</Text>
+            <Text style={styles.sectionTitle}>VIDEO SUBMISSIONS</Text>
             <View style={styles.videoStats}>
               <View style={styles.videoStatItem}>
                 <Text style={styles.videoStatValue}>{userData.videos.total || 0}</Text>
                 <Text style={styles.videoStatLabel}>Total</Text>
               </View>
+              <View style={styles.videoStatDivider} />
               <View style={styles.videoStatItem}>
                 <Text style={[styles.videoStatValue, { color: C.warning }]}>
                   {userData.videos.pending || 0}
                 </Text>
                 <Text style={styles.videoStatLabel}>Pending</Text>
               </View>
+              <View style={styles.videoStatDivider} />
               <View style={styles.videoStatItem}>
                 <Text style={[styles.videoStatValue, { color: C.success }]}>
                   {userData.videos.approved || 0}
                 </Text>
                 <Text style={styles.videoStatLabel}>Approved</Text>
               </View>
+              <View style={styles.videoStatDivider} />
               <View style={styles.videoStatItem}>
                 <Text style={[styles.videoStatValue, { color: C.danger }]}>
                   {userData.videos.rejected || 0}
@@ -552,12 +587,15 @@ export default function UserDetailScreen({ route, navigation }) {
         {/* Audit Log */}
         {auditLog.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Audit Log</Text>
+            <Text style={styles.sectionTitle}>AUDIT LOG</Text>
             <View style={styles.auditLog}>
               {auditLog.map((log, index) => (
                 <View key={index} style={styles.auditLogItem}>
                   <View style={styles.auditLogHeader}>
-                    <Text style={styles.auditLogAction}>{log.action.replace(/_/g, ' ')}</Text>
+                    <View style={styles.auditLogActionContainer}>
+                      <Ionicons name="document-text" size={12} color={C.accent} />
+                      <Text style={styles.auditLogAction}>{log.action.replace(/_/g, ' ')}</Text>
+                    </View>
                     <Text style={styles.auditLogDate}>
                       {new Date(log.createdAt).toLocaleString()}
                     </Text>
@@ -566,9 +604,11 @@ export default function UserDetailScreen({ route, navigation }) {
                     <Text style={styles.auditLogAdmin}>By: {log.admin.name || log.admin.username}</Text>
                   )}
                   {log.details && (
-                    <Text style={styles.auditLogDetails}>
-                      {JSON.stringify(log.details, null, 2)}
-                    </Text>
+                    <View style={styles.auditLogDetailsContainer}>
+                      <Text style={styles.auditLogDetails}>
+                        {JSON.stringify(log.details, null, 2)}
+                      </Text>
+                    </View>
                   )}
                 </View>
               ))}
@@ -583,9 +623,14 @@ export default function UserDetailScreen({ route, navigation }) {
       <Modal visible={editModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit {editField}</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit {editField}</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={20} color={C.textSubtle} />
+              </TouchableOpacity>
+            </View>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, editField === 'bio' && styles.modalInputMultiline]}
               value={editValue}
               onChangeText={setEditValue}
               autoFocus
@@ -598,6 +643,8 @@ export default function UserDetailScreen({ route, navigation }) {
                   ? 'number-pad'
                   : 'default'
               }
+              placeholder={`Enter ${editField}...`}
+              placeholderTextColor={C.textSubtle}
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -614,7 +661,10 @@ export default function UserDetailScreen({ route, navigation }) {
                 {saving ? (
                   <ActivityIndicator size="small" color={C.white} />
                 ) : (
-                  <Text style={styles.modalButtonTextSave}>Save</Text>
+                  <>
+                    <Ionicons name="checkmark" size={16} color={C.white} />
+                    <Text style={styles.modalButtonTextSave}>Save</Text>
+                  </>
                 )}
               </TouchableOpacity>
             </View>
@@ -644,14 +694,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: S.xl,
-    paddingBottom: S.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: S.lg,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
+    backgroundColor: C.bg,
   },
   backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: R.md,
     backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
@@ -659,86 +710,236 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.border,
   },
-  pageTitle: { ...T.h2, flex: 1 },
-  headerRight: { width: 34 },
-  notifyButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: C.accent,
+  headerContent: {
+    flex: 1,
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  pageSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: C.textSubtle,
+    marginTop: 2,
+    letterSpacing: 0.8,
+  },
+  headerRight: {
+    width: 40,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: S.sm,
+  },
+  headerActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: R.md,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
   },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { fontSize: 14, color: C.accent },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: S.xxl },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: S.xl,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: S.md,
+    fontSize: 13,
+    fontWeight: '500',
+    color: C.textMuted,
+    letterSpacing: 0.3,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: S.xxl,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: C.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: S.lg,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+    marginBottom: S.sm,
+    letterSpacing: 0.3,
+  },
+  emptySubtext: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textMuted,
+    letterSpacing: 0.3,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: S.xxl,
+  },
   profileHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: S.lg,
     backgroundColor: C.card,
-    margin: S.xl,
+    marginHorizontal: S.xl,
+    marginTop: S.lg,
+    marginBottom: S.lg,
     borderRadius: R.lg,
     borderWidth: 1,
     borderColor: C.border,
   },
-  avatarContainer: { marginRight: S.md },
-  avatar: { width: 64, height: 64, borderRadius: 32 },
+  avatarSection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  avatarContainer: {
+    marginRight: S.md,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: R.lg,
+    borderWidth: 2,
+    borderColor: C.border,
+  },
   avatarPlaceholder: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: R.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: C.surface,
+    borderWidth: 2,
+    borderColor: C.border,
   },
-  avatarInitial: { fontSize: 22, fontWeight: '700', color: C.white },
-  profileInfo: { flex: 1 },
-  profileName: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 4 },
-  profileHandle: { fontSize: 12, color: C.textSubtle, marginBottom: 8 },
-  profileBadges: { flexDirection: 'row', flexWrap: 'wrap' },
+  avatarInitial: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: C.text,
+    letterSpacing: 1,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: C.text,
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  profileHandle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textSubtle,
+    marginBottom: 10,
+    letterSpacing: 0.5,
+  },
+  profileBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
   accoladeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: C.surface,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 6,
-    marginBottom: 4,
+    borderRadius: R.sm,
     borderWidth: 1,
     borderColor: C.border,
+    gap: 4,
   },
-  accoladeBadgeText: { fontSize: 9, color: C.textSubtle, fontWeight: '600', marginLeft: 4 },
-  profileActions: { gap: 8 },
-  actionButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  accoladeBadgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: C.textSubtle,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: R.md,
     backgroundColor: C.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: `${C.accent}40`,
+  },
+  statsSection: {
+    paddingHorizontal: S.xl,
+    marginBottom: S.lg,
+  },
+  section: {
+    paddingHorizontal: S.xl,
+    marginBottom: S.lg,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    marginBottom: S.md,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: S.xl,
-    marginBottom: S.lg,
     gap: 10,
   },
   statBox: {
     width: '31%',
     backgroundColor: C.card,
     borderRadius: R.md,
-    padding: 12,
+    padding: 14,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: C.border,
   },
-  statBoxValue: { fontSize: 18, fontWeight: '700', color: C.text, marginTop: 6 },
-  statBoxLabel: { fontSize: 9, color: C.textSubtle, marginTop: 4 },
-  section: { paddingHorizontal: S.xl, marginBottom: S.xl },
-  sectionTitle: { ...T.caption, marginBottom: S.sm },
+  statBoxIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: R.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  statBoxValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: -0.5,
+  },
+  statBoxLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: C.textSubtle,
+    marginTop: 4,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   infoCard: {
     backgroundColor: C.card,
     borderRadius: R.lg,
@@ -750,77 +951,157 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  infoLabel: { fontSize: 12, color: C.textSubtle, fontWeight: '500', flex: 1 },
-  infoValueContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoValue: { fontSize: 12, color: C.text, fontWeight: '600' },
-  dropdownContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  dropdownItem: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: C.panel,
-    borderRadius: R.md,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  dropdownItemSelected: { backgroundColor: C.accentSoft, borderColor: C.accent },
-  dropdownItemText: { fontSize: 10, color: C.textSubtle, fontWeight: '600' },
-  dropdownItemTextSelected: { color: C.accent },
-  accoladesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  accoladeToggle: {
+  infoLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: R.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flex: 1,
+  },
+  infoIcon: {
+    marginRight: 10,
+  },
+  infoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.textSubtle,
+    letterSpacing: 0.3,
+  },
+  infoValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  accoladeToggleActive: { backgroundColor: C.accentSoft, borderColor: C.accent },
-  accoladeToggleAdmin: { borderColor: C.danger },
-  accoladeToggleText: { fontSize: 11, color: C.textSubtle, fontWeight: '600' },
-  accoladeToggleTextActive: { color: C.accent },
-  // New accolade display styles
-  accoladesDisplay: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  accoladeBadgeSmall: {
-    flexDirection: 'row',
+  infoValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.text,
+    letterSpacing: 0.2,
+  },
+  editIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: C.surface,
     alignItems: 'center',
-    backgroundColor: C.accent,
+    justifyContent: 'center',
+  },
+  dropdownContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  dropdownItem: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
+    backgroundColor: C.panel,
     borderRadius: R.sm,
-    gap: 4,
-  },
-  accoladeBadgeTextSmall: { fontSize: 10, color: C.white, fontWeight: '700' },
-  noAccoladesText: { fontSize: 12, color: C.textSubtle, fontStyle: 'italic' },
-  manageAccoladesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: C.accent,
-    borderRadius: R.md,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
+    borderColor: C.border,
   },
-  manageAccoladesText: { fontSize: 13, color: C.accent, fontWeight: '600' },
-  videoStats: {
-    flexDirection: 'row',
+  dropdownItemSelected: {
+    backgroundColor: C.accentSoft,
+    borderColor: C.accent,
+  },
+  dropdownItemText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: C.textSubtle,
+    letterSpacing: 0.3,
+  },
+  dropdownItemTextSelected: {
+    color: C.accent,
+    fontWeight: '700',
+  },
+  accoladesCard: {
     backgroundColor: C.card,
     borderRadius: R.lg,
     padding: S.md,
     borderWidth: 1,
     borderColor: C.border,
   },
-  videoStatItem: { flex: 1, alignItems: 'center' },
-  videoStatValue: { fontSize: 20, fontWeight: '700', color: C.text },
-  videoStatLabel: { fontSize: 10, color: C.textSubtle, marginTop: 4 },
+  accoladesDisplay: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: S.md,
+    minHeight: 32,
+  },
+  accoladeBadgeLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: R.sm,
+    gap: 6,
+  },
+  accoladeBadgeTextLarge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.white,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  noAccoladesText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textSubtle,
+    fontStyle: 'italic',
+    letterSpacing: 0.3,
+  },
+  manageAccoladesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.accent,
+    borderRadius: R.md,
+    paddingHorizontal: S.md,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  manageAccoladesText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.accent,
+    letterSpacing: 0.3,
+  },
+  videoStats: {
+    flexDirection: 'row',
+    backgroundColor: C.card,
+    borderRadius: R.lg,
+    padding: S.lg,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  videoStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  videoStatDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: C.border,
+    marginHorizontal: S.sm,
+  },
+  videoStatValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: -0.5,
+  },
+  videoStatLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: C.textSubtle,
+    marginTop: 4,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   auditLog: {
     backgroundColor: C.card,
     borderRadius: R.lg,
@@ -829,47 +1110,143 @@ const styles = StyleSheet.create({
     borderColor: C.border,
   },
   auditLogItem: {
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    padding: S.md,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  auditLogHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  auditLogAction: { fontSize: 11, color: C.accent, fontWeight: '600' },
-  auditLogDate: { fontSize: 10, color: C.textSubtle },
-  auditLogAdmin: { fontSize: 11, color: C.textSubtle, marginTop: 2 },
-  auditLogDetails: { fontSize: 10, color: C.textSubtle, marginTop: 4, fontFamily: T.mono.fontFamily },
-  bottomSpacer: { height: 20 },
+  auditLogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  auditLogActionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  auditLogAction: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.accent,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  auditLogDate: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: C.textSubtle,
+    letterSpacing: 0.3,
+  },
+  auditLogAdmin: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: C.textMuted,
+    marginTop: 4,
+    letterSpacing: 0.3,
+  },
+  auditLogDetailsContainer: {
+    marginTop: 8,
+    padding: 10,
+    backgroundColor: C.surface,
+    borderRadius: R.sm,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  auditLogDetails: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: C.textSubtle,
+    fontFamily: T.mono.fontFamily,
+    letterSpacing: 0.3,
+  },
+  bottomSpacer: {
+    height: S.xxl,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: S.xl,
   },
   modalContent: {
     backgroundColor: C.card,
     borderRadius: R.lg,
     padding: S.lg,
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 400,
     borderWidth: 1,
     borderColor: C.border,
   },
-  modalTitle: { ...T.h2, marginBottom: S.md },
-  modalInput: {
-    backgroundColor: C.panel,
-    borderRadius: R.md,
-    padding: 12,
-    fontSize: 13,
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: S.lg,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
     color: C.text,
-    marginBottom: S.md,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: C.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalInput: {
+    backgroundColor: C.surface,
+    borderRadius: R.md,
+    padding: 14,
+    fontSize: 14,
+    fontWeight: '500',
+    color: C.text,
+    marginBottom: S.lg,
+    borderWidth: 1,
+    borderColor: C.border,
+    letterSpacing: 0.2,
+  },
+  modalInputMultiline: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: R.md,
+    gap: 6,
+  },
+  modalButtonCancel: {
+    backgroundColor: C.surface,
     borderWidth: 1,
     borderColor: C.border,
   },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
-  modalButton: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: R.md },
-  modalButtonCancel: { backgroundColor: C.surface },
-  modalButtonSave: { backgroundColor: C.accent },
-  modalButtonTextCancel: { fontSize: 12, fontWeight: '600', color: C.text },
-  modalButtonTextSave: { fontSize: 12, fontWeight: '600', color: C.white },
+  modalButtonSave: {
+    backgroundColor: C.accent,
+  },
+  modalButtonTextCancel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.text,
+    letterSpacing: 0.3,
+  },
+  modalButtonTextSave: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.white,
+    letterSpacing: 0.3,
+  },
 });

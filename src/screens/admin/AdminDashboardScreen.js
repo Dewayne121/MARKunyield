@@ -99,31 +99,37 @@ export default function AdminDashboardScreen({ navigation }) {
         activeOpacity={isPressable ? 0.7 : 1}
         disabled={!isPressable}
       >
-        <View style={styles.statHeader}>
-          <View style={[styles.statIconContainer, { backgroundColor: `${color}15` }]}>
-            <Ionicons name={icon} size={20} color={color} />
+        <View style={styles.statCardInner}>
+          <View style={styles.statHeader}>
+            <View style={[styles.statIconContainer, { backgroundColor: `${color}18`, borderColor: `${color}40` }]}>
+              <Ionicons name={icon} size={18} color={color} />
+            </View>
+            {isPressable && (
+              <View style={styles.statArrowContainer}>
+                <Ionicons name="chevron-forward" size={14} color={C.textSubtle} />
+              </View>
+            )}
           </View>
-          {isPressable && (
-            <Ionicons name="chevron-forward" size={16} color={C.textSubtle} style={{ opacity: 0.6 }} />
-          )}
+          <View style={styles.statContent}>
+            <Text style={styles.statValue} numberOfLines={1}>{displayValue}</Text>
+            <Text style={styles.statTitle} numberOfLines={1}>{String(title)}</Text>
+            {displaySubtitle !== null && (
+              <Text style={[styles.statSubtitle, { color }]} numberOfLines={1}>{displaySubtitle}</Text>
+            )}
+          </View>
         </View>
-        <Text style={styles.statValue}>{displayValue}</Text>
-        <Text style={styles.statTitle}>{String(title)}</Text>
-        {displaySubtitle !== null && (
-          <Text style={[styles.statSubtitle, { color }]}>{displaySubtitle}</Text>
-        )}
       </TouchableOpacity>
     );
   };
 
   const QuickAction = ({ title, icon, color, onPress }) => (
     <TouchableOpacity
-      style={[styles.quickAction, { borderColor: `${color}55` }]}
+      style={styles.quickAction}
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={0.7}
     >
-      <View style={[styles.quickActionIcon, { backgroundColor: `${color}20` }]}>
-        <Ionicons name={icon} size={18} color={color} />
+      <View style={[styles.quickActionIcon, { backgroundColor: `${color}15`, borderColor: `${color}30` }]}>
+        <Ionicons name={icon} size={20} color={color} />
       </View>
       <Text style={styles.quickActionTitle} numberOfLines={2}>{title}</Text>
     </TouchableOpacity>
@@ -133,33 +139,40 @@ export default function AdminDashboardScreen({ navigation }) {
     const userName = String(user?.name || user?.username || 'Unknown');
     const userHandle = String(user?.username || 'unknown');
     const userInitial = userName.charAt(0).toUpperCase();
+    const isTopThree = index < 3;
 
     return (
-      <View style={styles.topUserItem}>
-        <View style={styles.rankBadge}>
-          <Text style={[styles.rankText, index < 3 && styles.topRankText]}>#{index + 1}</Text>
+      <TouchableOpacity
+        style={styles.topUserItem}
+        onPress={() => navigation.navigate('AdminUserDetail', { userId: user.id || user._id })}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.rankBadge, isTopThree && styles.rankBadgeTop]}>
+          <Text style={[styles.rankText, isTopThree && styles.topRankText]}>#{index + 1}</Text>
         </View>
-        
+
         <View style={styles.topUserAvatar}>
           {user.profileImage ? (
             <Image source={{ uri: user.profileImage }} style={styles.topUserImage} />
           ) : (
-            <View style={styles.topUserImagePlaceholder}>
-              <Text style={styles.topUserInitial}>{userInitial}</Text>
+            <View style={[styles.topUserImagePlaceholder, isTopThree && styles.topUserImagePlaceholderTop]}>
+              <Text style={[styles.topUserInitial, isTopThree && styles.topUserInitialTop]}>{userInitial}</Text>
             </View>
           )}
         </View>
-        
+
         <View style={styles.topUserInfo}>
           <Text style={styles.topUserName} numberOfLines={1}>{userName}</Text>
           <Text style={styles.topUserHandle} numberOfLines={1}>@{userHandle}</Text>
         </View>
-        
+
         <View style={styles.topUserPointsContainer}>
-          <Text style={styles.topUserPoints}>{formatNumber(user.totalPoints || 0)}</Text>
+          <Text style={[styles.topUserPoints, isTopThree && styles.topUserPointsTop]}>
+            {formatNumber(user.totalPoints || 0)}
+          </Text>
           <Text style={styles.topUserPointsLabel}>XP</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -185,11 +198,16 @@ export default function AdminDashboardScreen({ navigation }) {
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
         <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
-          <Text style={styles.pageTitle}>Admin Dashboard</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.pageTitle}>ADMIN DASHBOARD</Text>
+            <Text style={styles.pageSubtitle}>System Overview</Text>
+          </View>
         </View>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={C.accent} />
-          <Text style={styles.loadingText}>Loading dashboard...</Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={C.accent} />
+            <Text style={styles.loadingText}>Loading dashboard...</Text>
+          </View>
         </View>
       </View>
     );
@@ -200,16 +218,23 @@ export default function AdminDashboardScreen({ navigation }) {
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
         <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
-          <Text style={styles.pageTitle}>Admin Dashboard</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.pageTitle}>ADMIN DASHBOARD</Text>
+            <Text style={styles.pageSubtitle}>System Overview</Text>
+          </View>
         </View>
         <View style={styles.centerContainer}>
-          <View style={styles.errorIconContainer}>
-            <Ionicons name="alert-circle" size={48} color={C.danger} />
+          <View style={styles.errorContainer}>
+            <View style={styles.errorIconContainer}>
+              <Ionicons name="alert-circle" size={48} color={C.danger} />
+            </View>
+            <Text style={styles.errorTitle}>Connection Failed</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadStats}>
+              <Ionicons name="refresh" size={16} color={C.text} />
+              <Text style={styles.retryButtonText}>Retry Connection</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadStats}>
-            <Text style={styles.retryButtonText}>Retry Connection</Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -218,15 +243,15 @@ export default function AdminDashboardScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
-        <View>
-          <Text style={styles.pageTitle}>Admin Dashboard</Text>
-          <Text style={styles.pageSubtitle}>Overview & Management</Text>
+      <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
+        <View style={styles.headerContent}>
+          <Text style={styles.pageTitle}>ADMIN DASHBOARD</Text>
+          <Text style={styles.pageSubtitle}>System Overview</Text>
         </View>
         <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh-outline" size={20} color={C.textSubtle} />
+          <Ionicons name="refresh-outline" size={18} color={C.textSubtle} />
         </TouchableOpacity>
       </View>
 
@@ -234,9 +259,9 @@ export default function AdminDashboardScreen({ navigation }) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             tintColor={C.accent}
             colors={[C.accent]}
             progressBackgroundColor={C.card}
@@ -249,13 +274,20 @@ export default function AdminDashboardScreen({ navigation }) {
             {/* Community Support View */}
             <View style={styles.section}>
               <View style={styles.infoCard}>
-                <Ionicons name="information-circle-outline" size={20} color={C.info} />
-                <Text style={styles.infoCardText}>
-                  As Community Support, you have access to video moderation tools to help maintain platform quality.
-                </Text>
+                <View style={styles.infoCardIcon}>
+                  <Ionicons name="information-circle" size={20} color={C.info} />
+                </View>
+                <View style={styles.infoCardContent}>
+                  <Text style={styles.infoCardTitle}>Community Support Access</Text>
+                  <Text style={styles.infoCardText}>
+                    You have access to video moderation tools to help maintain platform quality.
+                  </Text>
+                </View>
               </View>
 
-              <Text style={styles.sectionTitle}>Video Moderation</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>VIDEO MODERATION</Text>
+              </View>
               <View style={styles.statsGrid}>
                 <StatCard
                   title="Pending Videos"
@@ -281,27 +313,32 @@ export default function AdminDashboardScreen({ navigation }) {
                 onPress={() => navigation.navigate('AdminVideoModeration')}
                 activeOpacity={0.8}
               >
-                <View style={styles.primaryActionGradient}>
-                  <View style={styles.primaryActionContent}>
-                    <Ionicons name="play-circle" size={22} color={C.white} />
-                    <Text style={styles.primaryActionText}>Start Moderation Queue</Text>
+                <View style={styles.primaryActionContent}>
+                  <View style={styles.primaryActionIcon}>
+                    <Ionicons name="play-circle" size={24} color={C.white} />
                   </View>
-                  {(pendingVideosCount ?? 0) > 0 && (
-                    <View style={styles.pendingBadge}>
-                      <Text style={styles.pendingBadgeText}>{pendingVideosCount}</Text>
-                    </View>
-                  )}
+                  <View style={styles.primaryActionTextContainer}>
+                    <Text style={styles.primaryActionTitle}>Start Moderation Queue</Text>
+                    <Text style={styles.primaryActionSubtitle}>Review pending workout videos</Text>
+                  </View>
                 </View>
+                {(pendingVideosCount ?? 0) > 0 && (
+                  <View style={styles.pendingBadge}>
+                    <Text style={styles.pendingBadgeText}>{pendingVideosCount}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           </>
         ) : (
           <>
             {/* Full Admin View */}
-            
+
             {/* Quick Stats Row */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Platform Overview</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>PLATFORM OVERVIEW</Text>
+              </View>
               <View style={styles.statsGrid}>
                 <StatCard
                   title="Total Users"
@@ -339,7 +376,9 @@ export default function AdminDashboardScreen({ navigation }) {
 
             {/* Quick Actions Grid */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Management Tools</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>MANAGEMENT TOOLS</Text>
+              </View>
               <View style={styles.quickActionsContainer}>
                 <QuickAction
                   title="Users"
@@ -394,7 +433,9 @@ export default function AdminDashboardScreen({ navigation }) {
 
             {/* Activity Stats */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>System Activity</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>SYSTEM ACTIVITY</Text>
+              </View>
               <View style={styles.statsGrid}>
                 <StatCard
                   title="Total Workouts"
@@ -428,12 +469,12 @@ export default function AdminDashboardScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={styles.twoColumnSection}>
+            <View style={styles.section}>
               {/* Top Users */}
               {stats?.topUsers && stats.topUsers.length > 0 && (
-                <View style={styles.columnContainer}>
+                <View style={styles.cardListSection}>
                   <View style={styles.sectionHeaderRow}>
-                    <Text style={styles.sectionTitle}>Top Grinders</Text>
+                    <Text style={styles.sectionTitle}>TOP GRINDERS</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('AdminLeaderboard')}>
                       <Text style={styles.seeAllText}>View All</Text>
                     </TouchableOpacity>
@@ -446,11 +487,13 @@ export default function AdminDashboardScreen({ navigation }) {
                 </View>
               )}
             </View>
-            
+
             {/* Region Distribution */}
             {stats?.regionDistribution && stats.regionDistribution.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>User Demographics</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>USER DEMOGRAPHICS</Text>
+                </View>
                 <View style={styles.cardContainer}>
                   {stats.regionDistribution.map((item, index) => {
                     const colors = [C.accent, C.info, C.warning, '#7C5CFF', C.success, C.danger];
@@ -470,7 +513,9 @@ export default function AdminDashboardScreen({ navigation }) {
             {/* User Growth Chart */}
             {stats?.userGrowth && stats.userGrowth.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Growth Trajectory</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>GROWTH TRAJECTORY</Text>
+                </View>
                 <View style={styles.chartCard}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={styles.chartContent}>
@@ -479,11 +524,11 @@ export default function AdminDashboardScreen({ navigation }) {
                         const barHeight = maxCount > 0 ? ((Number(item.count) || 0) / maxCount) * 100 : 0;
                         return (
                           <View key={index} style={styles.chartBarGroup}>
+                            <Text style={styles.chartBarValue}>{item.count || 0}</Text>
                             <View style={styles.chartBarTrack}>
                               <View style={[styles.chartBarFill, { height: `${barHeight}%` }]} />
                             </View>
                             <Text style={styles.chartBarLabel}>{String(item.month || '').substring(0, 3)}</Text>
-                            <Text style={styles.chartBarValue}>{item.count || 0}</Text>
                           </View>
                         );
                       })}
@@ -506,28 +551,41 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: S.xl,
-    paddingBottom: S.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: S.lg,
+    backgroundColor: C.bg,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
+  headerContent: {
+    flex: 1,
+  },
   pageTitle: {
-    ...T.title,
+    fontSize: 22,
+    fontWeight: '900',
+    color: C.text,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   pageSubtitle: {
-    ...T.subtitle,
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.textSubtle,
+    letterSpacing: 1.2,
     marginTop: 4,
+    textTransform: 'uppercase',
   },
   refreshButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: R.md,
     backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: C.border,
+    marginTop: 4,
   },
   centerContainer: {
     flex: 1,
@@ -535,47 +593,81 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: S.xl,
   },
+  loadingContainer: {
+    alignItems: 'center',
+  },
   loadingText: {
-    marginTop: S.md,
-    ...T.bodyMuted,
+    marginTop: S.lg,
+    fontSize: 13,
+    fontWeight: '500',
+    color: C.textMuted,
+    letterSpacing: 0.5,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    paddingHorizontal: S.xl,
   },
   errorIconContainer: {
-    marginBottom: S.md,
-    opacity: 0.9,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${C.danger}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: S.lg,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: C.text,
+    marginBottom: S.sm,
+    letterSpacing: 0.5,
   },
   errorText: {
-    marginBottom: S.lg,
-    ...T.body,
-    color: C.danger,
+    fontSize: 13,
+    fontWeight: '500',
+    color: C.textMuted,
     textAlign: 'center',
+    marginBottom: S.xl,
+    maxWidth: 280,
   },
   retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: S.xl,
-    paddingVertical: S.sm,
+    paddingVertical: S.md,
     backgroundColor: C.card,
     borderRadius: R.md,
     borderWidth: 1,
     borderColor: C.border,
+    gap: S.sm,
   },
   retryButtonText: {
-    ...T.body,
+    fontSize: 13,
+    fontWeight: '600',
     color: C.text,
+    letterSpacing: 0.3,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: S.xxl,
-    paddingTop: S.md,
+    paddingTop: S.lg,
   },
   section: {
     paddingHorizontal: S.xl,
-    marginBottom: S.xl,
+    marginBottom: S.lg,
+  },
+  sectionHeader: {
+    marginBottom: S.md,
   },
   sectionTitle: {
-    ...T.caption,
+    fontSize: 11,
+    fontWeight: '800',
     color: C.textSubtle,
-    marginBottom: S.md,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -584,8 +676,11 @@ const styles = StyleSheet.create({
     marginBottom: S.md,
   },
   seeAllText: {
-    ...T.caption,
+    fontSize: 11,
+    fontWeight: '700',
     color: C.accent,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -597,13 +692,15 @@ const styles = StyleSheet.create({
     margin: S.xs,
     backgroundColor: C.card,
     borderRadius: R.lg,
-    padding: S.md,
     borderWidth: 1,
     borderColor: C.border,
-    ...ADMIN_SHADOWS.soft,
+    overflow: 'hidden',
   },
   statCardPressable: {
     borderColor: C.borderSoft,
+  },
+  statCardInner: {
+    padding: S.md,
   },
   statHeader: {
     flexDirection: 'row',
@@ -612,26 +709,43 @@ const styles = StyleSheet.create({
     marginBottom: S.sm,
   },
   statIconContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: R.md,
+    width: 32,
+    height: 32,
+    borderRadius: R.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  statArrowContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: C.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  statContent: {
+    minHeight: 60,
+  },
   statValue: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '900',
     color: C.text,
-    fontFamily: T.title.fontFamily,
+    letterSpacing: -0.5,
     marginBottom: 2,
   },
   statTitle: {
-    ...T.caption,
+    fontSize: 11,
+    fontWeight: '700',
     color: C.textSubtle,
-    marginBottom: 2,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
   statSubtitle: {
-    ...T.mono,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   quickActionsContainer: {
     flexDirection: 'row',
@@ -643,35 +757,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: S.xs,
     marginBottom: S.md,
-    borderWidth: 1,
-    borderRadius: R.lg,
-    backgroundColor: C.panel,
   },
   quickActionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: R.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+    borderWidth: 1,
   },
   quickActionTitle: {
-    ...T.caption,
-    fontSize: 9,
+    fontSize: 10,
+    fontWeight: '700',
     textAlign: 'center',
     color: C.textMuted,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  cardListSection: {
+    width: '100%',
   },
   cardListContainer: {
     backgroundColor: C.card,
-    borderRadius: R.xl,
+    borderRadius: R.lg,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: C.border,
   },
   cardContainer: {
     backgroundColor: C.card,
-    borderRadius: R.xl,
-    padding: S.md,
+    borderRadius: R.lg,
+    padding: S.lg,
     borderWidth: 1,
     borderColor: C.border,
   },
@@ -679,44 +796,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: S.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
   rankBadge: {
-    width: 26,
-    marginRight: S.sm,
+    width: 28,
+    height: 28,
+    borderRadius: R.sm,
+    backgroundColor: C.surface,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: S.sm,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  rankBadgeTop: {
+    backgroundColor: `${C.warning}15`,
+    borderColor: `${C.warning}40`,
   },
   rankText: {
-    ...T.mono,
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.textSubtle,
+    letterSpacing: 0.5,
   },
   topRankText: {
     color: C.warning,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   topUserAvatar: {
     marginRight: S.sm,
   },
   topUserImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: R.sm,
     borderWidth: 1,
     borderColor: C.border,
   },
   topUserImagePlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: R.sm,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  topUserImagePlaceholderTop: {
+    backgroundColor: `${C.warning}15`,
+    borderColor: `${C.warning}40`,
   },
   topUserInitial: {
     fontSize: 14,
     fontWeight: '700',
     color: C.text,
-    fontFamily: T.title.fontFamily,
+  },
+  topUserInitialTop: {
+    color: C.warning,
   },
   topUserInfo: {
     flex: 1,
@@ -724,23 +862,33 @@ const styles = StyleSheet.create({
   },
   topUserName: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: C.text,
+    letterSpacing: 0.2,
   },
   topUserHandle: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '500',
     color: C.textSubtle,
+    marginTop: 2,
   },
   topUserPointsContainer: {
     alignItems: 'flex-end',
   },
   topUserPoints: {
-    ...T.mono,
+    fontSize: 14,
+    fontWeight: '900',
     color: C.accent,
+    letterSpacing: -0.5,
+  },
+  topUserPointsTop: {
+    color: C.warning,
   },
   topUserPointsLabel: {
     fontSize: 9,
+    fontWeight: '700',
     color: C.textSubtle,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
   regionStatItem: {
@@ -750,21 +898,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   regionStatName: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: C.text,
+    letterSpacing: 0.3,
   },
   regionStatCount: {
-    ...T.mono,
+    fontSize: 12,
+    fontWeight: '800',
+    color: C.textMuted,
+    letterSpacing: 0.5,
   },
   regionProgressBarBg: {
-    height: 6,
+    height: 8,
     backgroundColor: C.surface,
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: C.border,
   },
   regionProgressFill: {
     height: '100%',
@@ -772,32 +926,34 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     backgroundColor: C.card,
-    borderRadius: R.xl,
-    padding: S.md,
+    borderRadius: R.lg,
+    padding: S.lg,
     borderWidth: 1,
     borderColor: C.border,
-    minHeight: 200,
+    minHeight: 220,
   },
   chartContent: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 160,
+    height: 180,
     paddingRight: S.lg,
   },
   chartBarGroup: {
-    width: 32,
+    width: 36,
     alignItems: 'center',
     marginRight: S.md,
     height: '100%',
     justifyContent: 'flex-end',
   },
   chartBarTrack: {
-    width: 8,
-    height: '80%',
+    width: 10,
+    height: '70%',
     backgroundColor: C.surface,
-    borderRadius: 4,
+    borderRadius: 5,
     justifyContent: 'flex-end',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: C.border,
   },
   chartBarFill: {
     width: '100%',
@@ -805,79 +961,107 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent,
   },
   chartBarLabel: {
-    marginTop: S.xs,
-    fontSize: 9,
+    marginTop: S.sm,
+    fontSize: 10,
+    fontWeight: '700',
     color: C.textSubtle,
     textTransform: 'uppercase',
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   chartBarValue: {
     position: 'absolute',
-    top: -20,
-    fontSize: 9,
+    top: 0,
+    fontSize: 10,
+    fontWeight: '800',
     color: C.text,
-    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   infoCard: {
-    backgroundColor: C.surface,
-    padding: S.md,
+    backgroundColor: `${C.info}08`,
+    padding: S.lg,
     borderRadius: R.lg,
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: S.lg,
+    alignItems: 'flex-start',
+    marginBottom: S.xl,
     borderWidth: 1,
-    borderColor: C.borderSoft,
+    borderColor: `${C.info}20`,
+    borderLeftWidth: 3,
+    borderLeftColor: C.info,
+  },
+  infoCardIcon: {
+    marginRight: S.md,
+    marginTop: 2,
+  },
+  infoCardContent: {
+    flex: 1,
+  },
+  infoCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.text,
+    marginBottom: 4,
+    letterSpacing: 0.3,
   },
   infoCardText: {
-    flex: 1,
-    marginLeft: S.sm,
-    ...T.bodyMuted,
-    color: C.text,
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textMuted,
+    lineHeight: 18,
   },
   primaryActionButton: {
-    borderRadius: R.xl,
+    borderRadius: R.lg,
     overflow: 'hidden',
-    ...ADMIN_SHADOWS.card,
-  },
-  primaryActionGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: S.lg,
-    paddingHorizontal: S.xl,
     backgroundColor: C.accent,
+    borderWidth: 1,
+    borderColor: `${C.accent}80`,
+    ...ADMIN_SHADOWS.card,
   },
   primaryActionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: S.md,
+    paddingVertical: S.lg,
+    paddingHorizontal: S.xl,
   },
-  primaryActionText: {
-    fontSize: 14,
-    fontWeight: '700',
+  primaryActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: R.md,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: S.lg,
+  },
+  primaryActionTextContainer: {
+    flex: 1,
+  },
+  primaryActionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
     color: C.white,
-    letterSpacing: 0.6,
-    fontFamily: T.title.fontFamily,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  primaryActionSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 0.3,
   },
   pendingBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: S.sm,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: S.md,
+    paddingVertical: S.xs,
     borderRadius: R.pill,
+    marginRight: S.xl,
   },
   pendingBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: C.white,
+    letterSpacing: 0.5,
   },
   bottomSpacer: {
     height: S.xxl,
-  },
-  twoColumnSection: {
-    marginBottom: S.xl,
-    paddingHorizontal: S.xl,
-  },
-  columnContainer: {
-    width: '100%',
   },
 });

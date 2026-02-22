@@ -132,19 +132,24 @@ const ExperienceLevelScreen = () => {
 const styles = StyleSheet.create({
   infoBox: {
     padding: Spacing.md,
-    borderRadius: Spacing.md,
+    borderRadius: 6,
     borderWidth: 1,
+    borderTopWidth: 2,
+    borderLeftWidth: 4,
+    borderColor: '#333',
+    backgroundColor: '#161616',
     marginTop: Spacing.md,
   },
   infoBoxTitle: {
     ...Typography.body,
-    fontWeight: '700',
-    fontSize: 15,
+    fontWeight: '900',
+    fontSize: 14,
+    letterSpacing: 0.5,
     marginBottom: Spacing.xs,
   },
   infoBoxText: {
     ...Typography.bodySmall,
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 20,
   },
 });

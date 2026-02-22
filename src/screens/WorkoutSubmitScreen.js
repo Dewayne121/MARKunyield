@@ -71,14 +71,14 @@ const Spacing = {
   xxl: 24,
 };
 
-async function generateBattleReport({ apiKey, exerciseName, reps, weight }) {
+async function generateWorkoutReport({ apiKey, exerciseName, reps, weight }) {
   if (!apiKey) {
-    return `No comms key set. Still logged: ${reps} reps of ${exerciseName}. Your discipline is the signal.`;
+    return `Logged: ${reps} reps of ${exerciseName}. Your effort is recorded.`;
   }
 
   const prompt = `User just completed ${reps} reps of ${exerciseName}${weight ? ` at ${weight}kg` : ''}.
-Write a short intense "Battle Report" (1-3 sentences).
-Use gaming terms like "XP", "Loot", "Level Up", "Domination".`;
+Write a short intense workout report (1-3 sentences).
+Use fitness/gaming terms like "XP", "grind", "Level Up", "progress". Keep it motivating but not military-themed.`;
 
   try {
     const model = 'gemini-3-flash-preview';
@@ -89,7 +89,7 @@ Use gaming terms like "XP", "Loot", "Level Up", "Domination".`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system_instruction: {
-          parts: [{ text: 'You are the Overseer of Unyield, a gritty competitive fitness arena. You speak with authority and intensity. Keep it short, punchy, and motivating.' }],
+          parts: [{ text: 'You are the coach of UNYIELD, a gritty competitive fitness app. You speak with intensity and motivation. Keep it short, punchy, and encouraging. Avoid military jargon.' }],
         },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generation_config: { temperature: 0.9 },
@@ -112,7 +112,7 @@ Use gaming terms like "XP", "Loot", "Level Up", "Domination".`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system_instruction: {
-            parts: [{ text: 'You are the Overseer of Unyield, a gritty competitive fitness arena. You speak with authority and intensity. Keep it short, punchy, and motivating.' }],
+            parts: [{ text: 'You are the coach of UNYIELD, a gritty competitive fitness app. You speak with intensity and motivation. Keep it short, punchy, and encouraging. Avoid military jargon.' }],
           },
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generation_config: { temperature: 0.9 },
@@ -124,7 +124,7 @@ Use gaming terms like "XP", "Loot", "Level Up", "Domination".`;
                    data2?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text2) return String(text2).trim();
     } catch {}
-    return 'The systems are down, but your effort is logged. Rise above.';
+    return 'Systems are down, but your effort is logged. Keep pushing.';
   }
 }
 
@@ -560,7 +560,7 @@ export default function WorkoutSubmitScreen({ navigation }) {
     await new Promise((r) => setTimeout(r, 650));
 
     const apiKey = (await AsyncStorage.getItem(LS_GEMINI_KEY))?.trim() || '';
-    const report = await generateBattleReport({
+    const report = await generateWorkoutReport({
       apiKey,
       exerciseName: exercise.name,
       reps,
@@ -613,15 +613,16 @@ export default function WorkoutSubmitScreen({ navigation }) {
             try {
               const blurResponse = await api.blurVideo(serverVideoUrl);
 
-              if (blurResponse.success && blurResponse.data?.blurredVideoUrl) {
-                originalVideoUrl = blurResponse.data.originalVideoUrl || serverVideoUrl;
-                serverVideoUrl = blurResponse.data.blurredVideoUrl;
-                console.log('[WORKOUT SUBMIT] Faces blurred:', blurResponse.data.facesFound || blurResponse.data.facesDetected);
-              } else {
-                console.warn('[WORKOUT SUBMIT] Blur failed, using original video');
+              if (!blurResponse.success || !blurResponse.data?.blurredVideoUrl) {
+                throw new Error(blurResponse.error || 'Face blur failed. Video was not submitted.');
               }
+
+              originalVideoUrl = blurResponse.data.originalVideoUrl || serverVideoUrl;
+              serverVideoUrl = blurResponse.data.blurredVideoUrl;
+              console.log('[WORKOUT SUBMIT] Faces blurred:', blurResponse.data.facesFound || blurResponse.data.facesDetected);
             } catch (blurError) {
               console.warn('[WORKOUT SUBMIT] Blur error:', blurError.message);
+              throw blurError;
             } finally {
               setBlurring(false);
             }
@@ -662,6 +663,14 @@ export default function WorkoutSubmitScreen({ navigation }) {
           message: err.message,
           stack: err.stack?.substring(0, 500),
           response: err.response
+        });
+        showAlert({
+          title: 'Video Privacy Error',
+          message: blurFaces
+            ? (err.message || 'Face blur failed. The workout was saved, but video was not submitted for verification.')
+            : 'Video upload failed. The workout was saved locally.',
+          icon: 'warning',
+          buttons: [{ text: 'OK', style: 'default' }]
         });
         // Don't block the workout submission if video upload fails
         // Video will remain in local storage only

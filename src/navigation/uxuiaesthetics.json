@@ -1,0 +1,236 @@
+{
+  "aestheticName": "Gritty Gym Industrial HUD",
+  "vibe": [
+    "Brutalist",
+    "Tactical",
+    "Raw",
+    "Hardcore",
+    "High-Contrast",
+    "Industrial Furnace"
+  ],
+  "corePrinciples": [
+    "ARMOR OVER BUBBLES: Absolutely no soft, friendly, or playful shapes. Use sharp corners (0px-6px radius), heavy armor plating, and nested tactical HUD layouts.",
+    "TYPOGRAPHY MUST YELL: Heavy font weights (800, 900), strictly uppercase text for all labels and headers, and wide letter spacing to establish authority.",
+    "THE GARAGE GYM LIGHTING: The base is pitch black and dark gray. Contrast is achieved through harsh neon, blood-red accents, and pure white data points.",
+    "PHYSICAL INTERACTIVITY: Interactions must feel heavy. Use tight, high-tension spring animations that physically push elements down when pressed.",
+    "HIERARCHY THROUGH BRUTALISM: Rely on thick borders (left/top), high-contrast text, and stark solid-offset drop shadows rather than soft, feathery elevations.",
+    "DYNAMIC GRIT: Use subtle, menacing ambient effects (like smoldering embers or pulsing red glows) for highly critical actions (e.g., 'BATTLE' or 'COMPETE')."
+  ],
+  "designTokens": {
+    "colors": {
+      "background": {
+        "abyss": "#050505",
+        "base": "#0a0a0a",
+        "surface": "#121212",
+        "surfaceElevated": "#161616",
+        "surfaceHighlightSolid": "#1a1a1a",
+        "surfaceHighlightTranslucent": "rgba(22, 22, 22, 0.98)"
+      },
+      "primary": {
+        "dim": "#9b2c2c",
+        "base": "#b91c1c",
+        "active": "#d32f2f"
+      },
+      "accent": {
+        "smolderDeep": "#8b0000",
+        "fireRed": "#ff0000",
+        "emberOrange": "#ff4500",
+        "flareYellow": "#ff8c00"
+      },
+      "text": {
+        "dataValue": "#ffffff",
+        "header": "#f5f5f5",
+        "labelPrimary": "#888888",
+        "labelSecondary": "#666666",
+        "disabled": "#333333"
+      },
+      "border": {
+        "faint": "rgba(255,255,255,0.05)",
+        "subtle": "#1a1a1a",
+        "medium": "#222222",
+        "heavy": "#333333",
+        "hudArmor": "#3a3a3a"
+      }
+    },
+    "typography": {
+      "massiveTitles": {
+        "fontSize": 24,
+        "fontWeight": "900",
+        "letterSpacing": -0.5,
+        "textTransform": "uppercase",
+        "color": "#ffffff"
+      },
+      "sectionHeaders": {
+        "fontSize": 14,
+        "fontWeight": "900",
+        "letterSpacing": 2,
+        "textTransform": "uppercase",
+        "color": "#555555"
+      },
+      "hudLabels": {
+        "fontSize": 10,
+        "fontWeight": "800",
+        "letterSpacing": 1.5,
+        "textTransform": "uppercase",
+        "color": "#666666"
+      },
+      "dataValues": {
+        "fontSize": 22,
+        "fontWeight": "900",
+        "letterSpacing": -0.5,
+        "color": "#ffffff"
+      },
+      "microLabels": {
+        "fontSize": 9,
+        "fontWeight": "800",
+        "letterSpacing": 1,
+        "textTransform": "uppercase"
+      }
+    },
+    "borders": {
+      "radius": {
+        "razor": 0,
+        "tacticalInner": 2,
+        "tacticalOuter": 4,
+        "block": 6,
+        "floatingPill": 40
+      },
+      "width": {
+        "hairline": 1,
+        "standard": 2,
+        "heavy": 3,
+        "indicator": 4
+      }
+    },
+    "shadows": {
+      "brutalistFloat": {
+        "shadowColor": "#000",
+        "shadowOffset": { "width": 0, "height": 12 },
+        "shadowOpacity": 0.95,
+        "shadowRadius": 18,
+        "elevation": 20
+      },
+      "brutalistPress": {
+        "shadowColor": "#000",
+        "shadowOffset": { "width": 0, "height": 4 },
+        "shadowOpacity": 1,
+        "shadowRadius": 0,
+        "elevation": 4
+      },
+      "smolderGlow": {
+        "shadowColor": "#ff0000",
+        "shadowOffset": { "width": 0, "height": 6 },
+        "shadowOpacity": 0.5,
+        "shadowRadius": 15,
+        "elevation": 22
+      }
+    },
+    "animationPhysics": {
+      "snappySpring": {
+        "tension": 120,
+        "friction": 12,
+        "useNativeDriver": true
+      },
+      "heavyPressEffect": {
+        "scaleDown": 0.95,
+        "translateY": 4
+      },
+      "furnacePulse": {
+        "durationIn": 800,
+        "durationOut": 1000,
+        "scaleRange": [0.9, 1.1],
+        "opacityRange": [0.4, 0.7]
+      }
+    }
+  },
+  "componentBlueprints": {
+    "primaryActionTrigger": {
+      "description": "Massive, unmissable, armored block used for starting workouts.",
+      "structure": "Outer container with thick red border, inner content split between icon, title/subtitle, and heavy chevron.",
+      "styles": {
+        "backgroundColor": "#121212",
+        "borderWidth": 2,
+        "borderColor": "#b91c1c",
+        "borderRadius": 6,
+        "padding": 20
+      }
+    },
+    "tacticalDataBlock": {
+      "description": "Used for vitals (Weight, Height, XP) and stats.",
+      "structure": "Top border only to signify a 'tabbed' or 'slotted' piece of data.",
+      "styles": {
+        "backgroundColor": "#161616",
+        "borderTopWidth": 2,
+        "borderTopColor": "#333333",
+        "borderRadius": 6,
+        "padding": 16
+      }
+    },
+    "operationHistoryCard": {
+      "description": "Gritty row for workout logs or leaderboards.",
+      "structure": "Heavy left border indicator showing completion/status.",
+      "styles": {
+        "backgroundColor": "#161616",
+        "borderLeftWidth": 4,
+        "borderLeftColor": "#b91c1c",
+        "borderWidth": 1,
+        "borderColor": "#222222",
+        "borderRadius": 4,
+        "padding": 16,
+        "marginBottom": 12
+      }
+    },
+    "hudProgressTrack": {
+      "description": "Industrial nested progress bars (like XP bars).",
+      "structure": "Outer track (armor), Inner track (empty slot), Fill (colored progress).",
+      "styles": {
+        "outerTrack": { "borderWidth": 1, "borderColor": "#2A2A2A", "padding": 3, "borderRadius": 4, "backgroundColor": "#0a0a0a" },
+        "innerTrack": { "height": 6, "backgroundColor": "#161616", "borderRadius": 2, "overflow": "hidden" },
+        "fill": { "height": "100%", "backgroundColor": "{tierColor}" }
+      }
+    },
+    "tacticalAvatar": {
+      "description": "User profile pictures.",
+      "structure": "Strictly square or very slightly rounded, thick borders.",
+      "styles": {
+        "width": 48,
+        "height": 48,
+        "borderRadius": 4,
+        "borderWidth": 2,
+        "borderColor": "#333333",
+        "backgroundColor": "#121212"
+      }
+    },
+    "floatingNavigationPill": {
+      "description": "The main bottom navigation bar.",
+      "structure": "Thick-bordered pill, elevated massively above content with a deep brutalist shadow.",
+      "styles": {
+        "backgroundColor": "rgba(22, 22, 22, 0.98)",
+        "borderWidth": 2,
+        "borderColor": "#3a3a3a",
+        "borderRadius": 40,
+        "shadowColor": "#000",
+        "shadowOffset": { "width": 0, "height": 12 },
+        "shadowOpacity": 0.95,
+        "shadowRadius": 18
+      }
+    },
+    "smolderingFurnaceEffect": {
+      "description": "Ambient visual effect for the BATTLE/COMPETE state.",
+      "structure": "A pulsing core glow at the base, paired with 15-20 small, upward-drifting animated View particles.",
+      "physics": {
+        "particles": "Size 10-25px, Colors: #b91c1c, #8b0000, #ff4500. TranslateY upwards by -30 to -70px over 600-1400ms.",
+        "pillReaction": "When active, the floating pill border turns #8b0000, background turns #1a0e0e, and shadow becomes a glowing #ff0000."
+      }
+    }
+  },
+  "replicationBlueprint": {
+    "step1_environmentalSetup": "Set the root View or ScrollView background to `#050505` or `#0a0a0a`. Apply a bottom padding of at least 110px if the Floating Navigation Pill is present. Keep horizontal padding strict (16px).",
+    "step2_typographyAnnihilation": "Hunt down all text. Force `textTransform: 'uppercase'`. Apply `fontWeight: '800'` or `'900'`. Add `letterSpacing: 1` or `2` for labels. Make data values pure white (`#fff`) and massive. Make labels `#666` and tiny (10px).",
+    "step3_structuralArmorPlating": "Destroy all soft border radii (anything > 8px, except the Nav Pill). Use `borderRadius: 4` or `6`. Add 1px or 2px borders (`borderColor: '#222'` or `'#333'`) to all distinct cards and blocks to simulate physical metal plating.",
+    "step4_hudDataStructures": "When displaying metrics, always separate the label from the data. Put labels above or below data values in a stack. If there is a bar chart or progress bar, use the `hudProgressTrack` nested border approach (Armor > Slot > Fill).",
+    "step5_brutalistDepth": "Do not use standard iOS/Android subtle shadows. Use sharp offsets (`height: 6`, `radius: 0`) for pushed buttons, or heavy, dark, wide offsets (`height: 12`, `opacity: 0.95`) to make elements float aggressively.",
+    "step6_physicalInteractions": "Wrap all interactive elements in `TouchableOpacity` with `activeOpacity={0.8}`. For primary buttons or tab icons, use `Animated.spring` to trigger a `scale: 1.15` and `translateY: -4` (or `translateY: 4` for a physical push-down effect).",
+    "step7_grittyHighlights": "Use `#b91c1c` (Gritty Red) for active tab indicators, primary borders, or major call-to-actions. Avoid using primary red for large background fills; keep it as a stark, glowing accent against the pitch black."
+  }
+}

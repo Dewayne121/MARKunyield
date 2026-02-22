@@ -2,7 +2,27 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Preserve explicitly provided NODE_ENV (e.g., test runners).
+const shouldOverrideEnv = !process.env.NODE_ENV;
+const envCandidates = [
+  path.resolve(__dirname, '.env'),
+  path.resolve(__dirname, '.env.local'),
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '.env.local'),
+];
+
+const loadedEnvFiles = new Set();
+envCandidates.forEach((envPath) => {
+  if (loadedEnvFiles.has(envPath) || !fs.existsSync(envPath)) {
+    return;
+  }
+  dotenv.config({ path: envPath, override: shouldOverrideEnv });
+  loadedEnvFiles.add(envPath);
+});
 
 const { connectDB, disconnectDB } = require('./config/database');
 const MIN_JWT_SECRET_LENGTH = 32;
@@ -253,24 +273,33 @@ app.use((req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
+// Start server (skip network bind when running tests)
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`UNYIELDING Server running on http://0.0.0.0:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Database: PostgreSQL via Prisma`);
-  console.log(`Video uploads enabled`);
-});
+let server = null;
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`UNYIELDING Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Database: PostgreSQL via Prisma`);
+    console.log(`Video uploads enabled`);
+  });
+}
 
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {
   console.log(`\n${signal} received. Shutting down gracefully...`);
-  server.close(async () => {
-    console.log('HTTP server closed.');
-    await disconnectDB();
-    console.log('Database connection closed.');
-    process.exit(0);
-  });
+  if (server) {
+    server.close(async () => {
+      console.log('HTTP server closed.');
+      await disconnectDB();
+      console.log('Database connection closed.');
+      process.exit(0);
+    });
+    return;
+  }
+  await disconnectDB();
+  console.log('Database connection closed.');
+  process.exit(0);
 };
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
