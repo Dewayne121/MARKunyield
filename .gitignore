@@ -36,6 +36,7 @@ ORACLE_SECRET.txt
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript

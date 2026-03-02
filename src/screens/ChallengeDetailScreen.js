@@ -17,6 +17,29 @@ import { EXERCISES } from '../constants/exercises';
 import { getCompetitiveLiftLabel, resolveCompetitiveLiftId } from '../constants/competitiveLifts';
 import CustomAlert, { useCustomAlert } from '../components/CustomAlert';
 
+// Rank Movement Component for Leaderboard Changes
+const RankMovement = ({ rank, previousRank, styles }) => {
+  if (previousRank === null || previousRank === undefined || previousRank === rank) return null;
+
+  const movement = previousRank - rank;
+
+  if (movement > 0) {
+    return (
+      <View style={styles.rankUp}>
+        <Ionicons name="arrow-up" size={12} color="#00ff88" />
+        <Text style={styles.rankUpText}>+{movement}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.rankDown}>
+      <Ionicons name="arrow-down" size={12} color="#ff003c" />
+      <Text style={styles.rankDownText}>{Math.abs(movement)}</Text>
+    </View>
+  );
+};
+
 export default function ChallengeDetailScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -27,6 +50,8 @@ export default function ChallengeDetailScreen({ navigation, route }) {
   const [leaderboard, setLeaderboard] = useState([]);
   const [mySubmissions, setMySubmissions] = useState([]);
   const [joining, setJoining] = useState(false);
+  const [coreLiftSubmittingId, setCoreLiftSubmittingId] = useState(null);
+  const [addedToCoreLiftIds, setAddedToCoreLiftIds] = useState([]);
   const getChallengeId = (item) => item?.id || item?._id || null;
 
   // Initialize styles at the top level
@@ -48,18 +73,16 @@ export default function ChallengeDetailScreen({ navigation, route }) {
       }
 
       // Load leaderboard
-      const leaderboardResponse = await api.request(`/api/challenges/${resolvedChallengeId}/leaderboard?limit=50`);
+      const leaderboardResponse = await api.request(`/api/challenges/${resolvedChallengeId}/leaderboard?limit=100`);
 
       if (leaderboardResponse.success) {
         setLeaderboard(leaderboardResponse.data.leaderboard || []);
       }
 
-      // Load my submissions if joined
-      if (found?.joined) {
-        const submissionsResponse = await api.getMyChallengeSubmissions(resolvedChallengeId);
-        if (submissionsResponse.success) {
-          setMySubmissions(submissionsResponse.data || []);
-        }
+      // Load my submissions regardless of joined state so previously approved entries remain visible.
+      const submissionsResponse = await api.getMyChallengeSubmissions(resolvedChallengeId);
+      if (submissionsResponse.success) {
+        setMySubmissions(submissionsResponse.data || []);
       }
     } catch (err) {
       console.error('Error loading challenge:', err);
@@ -186,6 +209,66 @@ export default function ChallengeDetailScreen({ navigation, route }) {
         <Text style={styles.rankNumberText}>{rank}</Text>
       </View>
     );
+  };
+
+  const getCoreLiftPayload = (submission) => {
+    const liftType = resolveCompetitiveLiftId(submission?.exercise);
+    const reps = Number(submission?.reps) || 0;
+    const weight = Number(submission?.weight) || 0;
+
+    if (!liftType || reps <= 0 || weight <= 0) {
+      return null;
+    }
+
+    return {
+      liftType,
+      reps,
+      weight,
+      locationType: 'gym',
+      notes: `Imported from approved challenge submission ${submission?.id || ''}`.trim(),
+    };
+  };
+
+  const handleAddToCoreLifts = async (submission) => {
+    const payload = getCoreLiftPayload(submission);
+    if (!payload) {
+      showAlert({
+        title: 'Not Eligible',
+        message: 'Only approved bench, squat, or deadlift submissions with weight and reps can be added.',
+        icon: 'warning',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
+      return;
+    }
+
+    try {
+      setCoreLiftSubmittingId(submission.id);
+      const response = await api.submitCoreLift(payload);
+      if (response?.success) {
+        setAddedToCoreLiftIds((prev) => (prev.includes(submission.id) ? prev : [...prev, submission.id]));
+        showAlert({
+          title: 'Added',
+          message: 'Submission added to Core Lifts leaderboard.',
+          icon: 'success',
+          buttons: [{ text: 'OK', style: 'default' }],
+        });
+      } else {
+        throw new Error(response?.error || response?.message || 'Failed to add to Core Lifts');
+      }
+    } catch (error) {
+      const message = String(error?.message || '');
+      if (message.toLowerCase().includes('already in core lifts')) {
+        setAddedToCoreLiftIds((prev) => (prev.includes(submission.id) ? prev : [...prev, submission.id]));
+      }
+      showAlert({
+        title: 'Error',
+        message: message || 'Failed to add to Core Lifts',
+        icon: 'error',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
+    } finally {
+      setCoreLiftSubmittingId(null);
+    }
   };
 
   if (loading) {
@@ -353,23 +436,28 @@ export default function ChallengeDetailScreen({ navigation, route }) {
 
           {leaderboard.length > 0 ? (
             <View style={styles.leaderboardList}>
-                {leaderboard.slice(0, 10).map((entry, index) => (
+                {leaderboard.map((entry, index) => (
                 <View
                     key={`${entry.userId || entry.user?._id || entry.id || 'entry'}-${index}`}
                     style={[styles.leaderboardItem, index === leaderboard.length - 1 && { borderBottomWidth: 0 }]}
                 >
                     <View style={styles.leaderboardRank}>
                       {renderRankBadge(entry.rank || index + 1)}
+                      <RankMovement rank={entry.rank || index + 1} previousRank={entry.previousRank} styles={styles} />
                     </View>
                     <View style={styles.leaderboardInfo}>
-                        <Text style={styles.leaderboardName} numberOfLines={1}>{entry.name || entry.user?.name}</Text>
+                        <Text style={styles.leaderboardName} numberOfLines={1}>
+                          {entry.name || entry.username || entry.user?.name || entry.user?.username || 'Athlete'}
+                        </Text>
                         <Text style={styles.leaderboardProgress}>
                             {entry.progress || 0} / {challenge.target}
                         </Text>
                     </View>
                     <View style={styles.leaderboardPercentage}>
                         <Text style={[styles.leaderboardPercentageText, { color: theme.primary }]}>
-                            {Math.round((entry.progress / challenge.target) * 100)}%
+                            {challenge.target > 0
+                              ? `${Math.round(((entry.progress || 0) / challenge.target) * 100)}%`
+                              : '0%'}
                         </Text>
                     </View>
                 </View>
@@ -382,8 +470,8 @@ export default function ChallengeDetailScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* My Submissions (if joined) */}
-        {challenge.joined && mySubmissions.length > 0 && (
+        {/* My Submissions */}
+        {mySubmissions.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
              <Ionicons name="list-outline" size={18} color={theme.textMuted} style={{ marginRight: 8 }} />
@@ -423,6 +511,30 @@ export default function ChallengeDetailScreen({ navigation, route }) {
                 </View>
                 {submission.rejectionReason && (
                   <Text style={[styles.rejectionReason, { color: theme.danger }]}>Reason: {submission.rejectionReason}</Text>
+                )}
+                {submission.status === 'approved' && !!getCoreLiftPayload(submission) && !addedToCoreLiftIds.includes(submission.id) && (
+                  <TouchableOpacity
+                    style={[styles.coreLiftButton, { borderColor: theme.primary }]}
+                    onPress={() => handleAddToCoreLifts(submission)}
+                    disabled={coreLiftSubmittingId === submission.id}
+                  >
+                    {coreLiftSubmittingId === submission.id ? (
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    ) : (
+                      <>
+                        <Ionicons name="barbell-outline" size={14} color={theme.primary} />
+                        <Text style={[styles.coreLiftButtonText, { color: theme.primary }]}>
+                          ADD TO CORE LIFTS
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+                {submission.status === 'approved' && addedToCoreLiftIds.includes(submission.id) && (
+                  <View style={styles.coreLiftAddedRow}>
+                    <Ionicons name="checkmark-circle" size={14} color={theme.success} />
+                    <Text style={[styles.coreLiftAddedText, { color: theme.success }]}>ADDED TO CORE LIFTS</Text>
+                  </View>
                 )}
               </View>
             ))}
@@ -755,6 +867,28 @@ function createStyles(theme) {
         justifyContent: 'center',
         alignItems: 'center',
       },
+      rankUp: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+      },
+      rankUpText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#00ff88',
+        marginLeft: 2,
+      },
+      rankDown: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+      },
+      rankDownText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#ff003c',
+        marginLeft: 2,
+      },
       rankNumberText: {
         fontSize: 10,
         fontWeight: '800',
@@ -829,6 +963,35 @@ function createStyles(theme) {
       rejectionReason: {
         fontSize: 11,
         marginTop: 6,
+      },
+      coreLiftButton: {
+        marginTop: 10,
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(255,255,255,0.02)',
+      },
+      coreLiftButtonText: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
+      },
+      coreLiftAddedRow: {
+        marginTop: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+      },
+      coreLiftAddedText: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
       },
       bottomBar: {
         backgroundColor: theme.bgCard,

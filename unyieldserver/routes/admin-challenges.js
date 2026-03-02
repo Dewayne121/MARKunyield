@@ -626,44 +626,51 @@ router.post('/submissions/:id/verify',
         },
       });
 
-      if (userChallenge) {
-        let newProgress;
-        // Update progress based on completion type
-        if (submission.challenge.completionType === 'cumulative') {
-          newProgress = userChallenge.progress + submission.value;
-        } else if (submission.challenge.completionType === 'best_effort') {
-          newProgress = Math.max(userChallenge.progress, submission.value);
-        } else {
-          // single_session - use the current submission value
-          newProgress = submission.value;
-        }
+      const ensuredUserChallenge = userChallenge || await prisma.userChallenge.create({
+        data: {
+          userId: submission.userId,
+          challengeId: submission.challengeId,
+          progress: 0,
+          completed: false,
+        },
+      });
 
-        const updateData = { progress: newProgress };
+      let newProgress;
+      // Update progress based on completion type
+      if (submission.challenge.completionType === 'cumulative') {
+        newProgress = ensuredUserChallenge.progress + submission.value;
+      } else if (submission.challenge.completionType === 'best_effort') {
+        newProgress = Math.max(ensuredUserChallenge.progress, submission.value);
+      } else {
+        // single_session - use the current submission value
+        newProgress = submission.value;
+      }
 
-        // Check if challenge is completed
-        if (newProgress >= submission.challenge.target && !userChallenge.completed) {
-          updateData.completed = true;
-          updateData.completedAt = new Date();
+      const updateData = { progress: newProgress };
 
-          // Award bonus points (reward)
-          await prisma.user.update({
-            where: { id: submission.userId },
-            data: {
-              totalPoints: { increment: submission.challenge.reward || 0 },
-            },
-          });
-        }
+      // Check if challenge is completed
+      if (newProgress >= submission.challenge.target && !ensuredUserChallenge.completed) {
+        updateData.completed = true;
+        updateData.completedAt = new Date();
 
-        await prisma.userChallenge.update({
-          where: {
-            userId_challengeId: {
-              userId: submission.userId,
-              challengeId: submission.challengeId,
-            },
+        // Award bonus points (reward)
+        await prisma.user.update({
+          where: { id: submission.userId },
+          data: {
+            totalPoints: { increment: submission.challenge.reward || 0 },
           },
-          data: updateData,
         });
       }
+
+      await prisma.userChallenge.update({
+        where: {
+          userId_challengeId: {
+            userId: submission.userId,
+            challengeId: submission.challengeId,
+          },
+        },
+        data: updateData,
+      });
 
       // Recalculate user's aggregate strength ratio for leaderboard ranking
       // This ensures approved submissions update the user's leaderboard position

@@ -240,13 +240,13 @@ export default function WelcomeScreen() {
                   <Ionicons name="mail-outline" size={20} color={theme.textMuted} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, { color: theme.textMain }]}
-                    placeholder="Email"
+                    placeholder={mode === 'signin' ? 'Email or Username' : 'Email'}
                     placeholderTextColor={theme.textMuted}
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
-                    keyboardType="email-address"
-                    textContentType="emailAddress"
+                    keyboardType={mode === 'signin' ? 'default' : 'email-address'}
+                    textContentType={mode === 'signin' ? 'username' : 'emailAddress'}
                     autoCorrect={false}
                   />
                 </View>

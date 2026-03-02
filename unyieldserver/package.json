@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:seed": "node scripts/seed.js",
     "migrate:data": "node scripts/migrate-to-postgres.js",
+    "sync:users": "node scripts/syncMongoUsersToPostgres.js",
     "prisma:studio": "prisma studio"
   },
   "keywords": [

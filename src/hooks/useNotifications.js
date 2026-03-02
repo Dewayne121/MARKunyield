@@ -160,7 +160,7 @@ export function useNotifications() {
       try {
         await registerTokenWithBackend(token.data);
       } catch (error) {
-        console.error('Failed to register push token with backend:', error);
+        console.warn('Failed to register push token with backend:', error?.message || error);
       }
 
       return token.data;
@@ -173,7 +173,7 @@ export function useNotifications() {
           try {
             await registerTokenWithBackend(fallbackToken.data);
           } catch (registerError) {
-            console.error('Failed to register fallback push token with backend:', registerError);
+            console.warn('Failed to register fallback push token with backend:', registerError?.message || registerError);
           }
           return fallbackToken.data;
         } catch (fallbackError) {
@@ -278,7 +278,7 @@ export function useNotifications() {
     if (lastRegisteredTokenRef.current === expoPushToken) return;
 
     registerTokenWithBackend(expoPushToken).catch((error) => {
-      console.error('Deferred push token sync failed:', error);
+      console.warn('Deferred push token sync failed:', error?.message || error);
     });
   }, [expoPushToken, registerTokenWithBackend]);
 

@@ -6,14 +6,16 @@
     "Raw",
     "Hardcore",
     "High-Contrast",
-    "Industrial Furnace"
+    "Industrial Furnace",
+    "Refined Armor",
+    "Smooth Heavy"
   ],
   "corePrinciples": [
-    "ARMOR OVER BUBBLES: Absolutely no soft, friendly, or playful shapes. Use sharp corners (0px-6px radius), heavy armor plating, and nested tactical HUD layouts.",
+    "ARMOR WITH CURVE DISCIPLINE: Keep the interface powerful and industrial, but replace harsh blockiness with controlled, smooth corner radii. Prefer 12px-24px radii for cards, panels, and controls, while preserving a dense armored feel.",
     "TYPOGRAPHY MUST YELL: Heavy font weights (800, 900), strictly uppercase text for all labels and headers, and wide letter spacing to establish authority.",
     "THE GARAGE GYM LIGHTING: The base is pitch black and dark gray. Contrast is achieved through harsh neon, blood-red accents, and pure white data points.",
-    "PHYSICAL INTERACTIVITY: Interactions must feel heavy. Use tight, high-tension spring animations that physically push elements down when pressed.",
-    "HIERARCHY THROUGH BRUTALISM: Rely on thick borders (left/top), high-contrast text, and stark solid-offset drop shadows rather than soft, feathery elevations.",
+    "PHYSICAL INTERACTIVITY: Interactions must feel heavy but fluid. Use tight spring animations with smoother easing so elements compress with weight instead of snapping like rigid blocks.",
+    "HIERARCHY THROUGH SMOOTH ARMOR: Rely on strong borders, layered surfaces, rounded containment, and stark high-contrast shadows rather than playful softness or feathered elevation.",
     "DYNAMIC GRIT: Use subtle, menacing ambient effects (like smoldering embers or pulsing red glows) for highly critical actions (e.g., 'BATTLE' or 'COMPETE')."
   ],
   "designTokens": {
@@ -90,9 +92,10 @@
     "borders": {
       "radius": {
         "razor": 0,
-        "tacticalInner": 2,
-        "tacticalOuter": 4,
-        "block": 6,
+        "tacticalInner": 8,
+        "tacticalOuter": 12,
+        "panel": 16,
+        "card": 20,
         "floatingPill": 40
       },
       "width": {
@@ -114,7 +117,7 @@
         "shadowColor": "#000",
         "shadowOffset": { "width": 0, "height": 4 },
         "shadowOpacity": 1,
-        "shadowRadius": 0,
+        "shadowRadius": 4,
         "elevation": 4
       },
       "smolderGlow": {
@@ -127,55 +130,55 @@
     },
     "animationPhysics": {
       "snappySpring": {
-        "tension": 120,
-        "friction": 12,
+        "tension": 105,
+        "friction": 14,
         "useNativeDriver": true
       },
       "heavyPressEffect": {
-        "scaleDown": 0.95,
-        "translateY": 4
+        "scaleDown": 0.97,
+        "translateY": 3
       },
       "furnacePulse": {
         "durationIn": 800,
         "durationOut": 1000,
-        "scaleRange": [0.9, 1.1],
+        "scaleRange": [0.92, 1.08],
         "opacityRange": [0.4, 0.7]
       }
     }
   },
   "componentBlueprints": {
     "primaryActionTrigger": {
-      "description": "Massive, unmissable, armored block used for starting workouts.",
+      "description": "Massive, unmissable, armored control used for starting workouts, now with smoother containment.",
       "structure": "Outer container with thick red border, inner content split between icon, title/subtitle, and heavy chevron.",
       "styles": {
         "backgroundColor": "#121212",
         "borderWidth": 2,
         "borderColor": "#b91c1c",
-        "borderRadius": 6,
+        "borderRadius": 20,
         "padding": 20
       }
     },
     "tacticalDataBlock": {
       "description": "Used for vitals (Weight, Height, XP) and stats.",
-      "structure": "Top border only to signify a 'tabbed' or 'slotted' piece of data.",
+      "structure": "Top border only to signify a slotted piece of data, but housed inside a rounded armored shell.",
       "styles": {
         "backgroundColor": "#161616",
         "borderTopWidth": 2,
         "borderTopColor": "#333333",
-        "borderRadius": 6,
+        "borderRadius": 16,
         "padding": 16
       }
     },
     "operationHistoryCard": {
       "description": "Gritty row for workout logs or leaderboards.",
-      "structure": "Heavy left border indicator showing completion/status.",
+      "structure": "Heavy left border indicator showing completion/status with smoother outer corners.",
       "styles": {
         "backgroundColor": "#161616",
         "borderLeftWidth": 4,
         "borderLeftColor": "#b91c1c",
         "borderWidth": 1,
         "borderColor": "#222222",
-        "borderRadius": 4,
+        "borderRadius": 16,
         "padding": 16,
         "marginBottom": 12
       }
@@ -184,18 +187,33 @@
       "description": "Industrial nested progress bars (like XP bars).",
       "structure": "Outer track (armor), Inner track (empty slot), Fill (colored progress).",
       "styles": {
-        "outerTrack": { "borderWidth": 1, "borderColor": "#2A2A2A", "padding": 3, "borderRadius": 4, "backgroundColor": "#0a0a0a" },
-        "innerTrack": { "height": 6, "backgroundColor": "#161616", "borderRadius": 2, "overflow": "hidden" },
-        "fill": { "height": "100%", "backgroundColor": "{tierColor}" }
+        "outerTrack": {
+          "borderWidth": 1,
+          "borderColor": "#2A2A2A",
+          "padding": 3,
+          "borderRadius": 12,
+          "backgroundColor": "#0a0a0a"
+        },
+        "innerTrack": {
+          "height": 6,
+          "backgroundColor": "#161616",
+          "borderRadius": 999,
+          "overflow": "hidden"
+        },
+        "fill": {
+          "height": "100%",
+          "backgroundColor": "{tierColor}",
+          "borderRadius": 999
+        }
       }
     },
     "tacticalAvatar": {
       "description": "User profile pictures.",
-      "structure": "Strictly square or very slightly rounded, thick borders.",
+      "structure": "Rounded-square avatar with thick borders.",
       "styles": {
         "width": 48,
         "height": 48,
-        "borderRadius": 4,
+        "borderRadius": 16,
         "borderWidth": 2,
         "borderColor": "#333333",
         "backgroundColor": "#121212"
@@ -227,10 +245,10 @@
   "replicationBlueprint": {
     "step1_environmentalSetup": "Set the root View or ScrollView background to `#050505` or `#0a0a0a`. Apply a bottom padding of at least 110px if the Floating Navigation Pill is present. Keep horizontal padding strict (16px).",
     "step2_typographyAnnihilation": "Hunt down all text. Force `textTransform: 'uppercase'`. Apply `fontWeight: '800'` or `'900'`. Add `letterSpacing: 1` or `2` for labels. Make data values pure white (`#fff`) and massive. Make labels `#666` and tiny (10px).",
-    "step3_structuralArmorPlating": "Destroy all soft border radii (anything > 8px, except the Nav Pill). Use `borderRadius: 4` or `6`. Add 1px or 2px borders (`borderColor: '#222'` or `'#333'`) to all distinct cards and blocks to simulate physical metal plating.",
+    "step3_structuralArmorPlating": "Replace harsh blocky radii with smooth, disciplined curvature. Prefer `borderRadius: 12`, `16`, or `20` for cards and surfaces, and reserve fully pill-shaped rounding for navigation or segmented controls. Keep borders strong (`'#222'` or `'#333'`) so the UI still feels armored rather than soft.",
     "step4_hudDataStructures": "When displaying metrics, always separate the label from the data. Put labels above or below data values in a stack. If there is a bar chart or progress bar, use the `hudProgressTrack` nested border approach (Armor > Slot > Fill).",
-    "step5_brutalistDepth": "Do not use standard iOS/Android subtle shadows. Use sharp offsets (`height: 6`, `radius: 0`) for pushed buttons, or heavy, dark, wide offsets (`height: 12`, `opacity: 0.95`) to make elements float aggressively.",
-    "step6_physicalInteractions": "Wrap all interactive elements in `TouchableOpacity` with `activeOpacity={0.8}`. For primary buttons or tab icons, use `Animated.spring` to trigger a `scale: 1.15` and `translateY: -4` (or `translateY: 4` for a physical push-down effect).",
+    "step5_brutalistDepth": "Do not use standard iOS/Android subtle shadows. Use strong offsets and dark shadows, but pair them with rounded containment so elements feel like machined steel modules instead of rigid blocks.",
+    "step6_physicalInteractions": "Wrap all interactive elements in `TouchableOpacity` with `activeOpacity={0.85}`. For primary buttons or tab icons, use `Animated.spring` to trigger a subtle `scale: 1.03` and `translateY: 3` for a heavy press-in effect that feels smooth and controlled.",
     "step7_grittyHighlights": "Use `#b91c1c` (Gritty Red) for active tab indicators, primary borders, or major call-to-actions. Avoid using primary red for large background fills; keep it as a stark, glowing accent against the pitch black."
   }
 }

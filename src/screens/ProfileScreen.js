@@ -166,7 +166,7 @@ export default function ProfileScreen({ route, navigation }) {
           const response = await api.getUserById(userId);
           if (response.success && response.data) setViewedUser(response.data);
           else setViewedUser(null);
-        } catch (err) { setViewedUser(null); } 
+        } catch (err) { setViewedUser(null); }
         finally { setLoadingProfile(false); }
       } else {
         setLoadingProfile(true);
@@ -174,7 +174,7 @@ export default function ProfileScreen({ route, navigation }) {
           const response = await api.getProfile();
           if (response.success && response.data) setViewedUser(response.data);
           else setViewedUser(currentUser);
-        } catch (error) { setViewedUser(currentUser); } 
+        } catch (error) { setViewedUser(currentUser); }
         finally { setLoadingProfile(false); }
       }
     };
@@ -235,6 +235,10 @@ export default function ProfileScreen({ route, navigation }) {
             approved: v.status === 'approved',
             type: 'challenge',
             challengeTitle: v.challenge?.title,
+            blurStatus: v.blurStatus || 'none',
+            blurStartedAt: v.blurStartedAt,
+            blurCompletedAt: v.blurCompletedAt,
+            blurError: v.blurError,
           })));
         }
 
@@ -357,6 +361,8 @@ export default function ProfileScreen({ route, navigation }) {
   const handleCloseEditModal = () => {
     setShowEditProfileModal(false);
     resetEditForm();
+    // Small delay to let the modal animation complete before re-opening settings
+    setTimeout(() => setShowSettingsModal(true), 100);
   };
 
   const resetEditForm = () => {
@@ -411,6 +417,8 @@ export default function ProfileScreen({ route, navigation }) {
         setViewedUser(result.data);
         setRefreshKey(prev => prev + 1);
         setShowEditProfileModal(false);
+        // Small delay to let the modal animation complete before re-opening settings
+        setTimeout(() => setShowSettingsModal(true), 100);
         showAlert({ title: 'SUCCESS', message: 'PROFILE UPDATED SUCCESSFULLY.', icon: 'success', buttons: [{ text: 'OK', style: 'default' }] });
       } else {
         showAlert({ title: 'ERROR', message: 'FAILED TO UPDATE PROFILE.', icon: 'error', buttons: [{ text: 'OK', style: 'default' }] });
@@ -633,6 +641,8 @@ export default function ProfileScreen({ route, navigation }) {
     setNewPassword('');
     setConfirmPassword('');
     setPasswordError('');
+    // Small delay to let the modal animation complete before re-opening settings
+    setTimeout(() => setShowSettingsModal(true), 100);
   };
 
   const handleSavePassword = async () => {
@@ -660,6 +670,8 @@ export default function ProfileScreen({ route, navigation }) {
       const response = await api.changePassword(currentPassword, newPassword);
       if (response.success) {
         setShowChangePasswordModal(false);
+        // Small delay to let the modal animation complete before re-opening settings
+        setTimeout(() => setShowSettingsModal(true), 100);
         showAlert({ title: 'SUCCESS', message: 'PASSWORD CHANGED SUCCESSFULLY.', icon: 'success', buttons: [{ text: 'OK', style: 'default' }] });
         setCurrentPassword('');
         setNewPassword('');
@@ -708,7 +720,7 @@ export default function ProfileScreen({ route, navigation }) {
     <View style={styles.container}>
       <ScreenHeader
         title="PROFILE"
-        subtitle={isOwnProfile ? "YOUR STATS" : "ATHLETE PROFILE"}
+        subtitle={isOwnProfile ? "PERSONNEL FILE" : "INTEL DOSSIER"}
         showBackButton={true}
         onBackPress={handleBack}
         rightAction={!isOwnProfile && isAdmin ? (
@@ -937,6 +949,26 @@ export default function ProfileScreen({ route, navigation }) {
                                 <Ionicons name="time-sharp" size={14} color="#F59E0B" />
                             )}
                          </View>
+                         {/* Blur Status Indicator */}
+                         {video.type === 'challenge' && video.blurStatus !== 'none' && (
+                           <View style={styles.videoStatus}>
+                             {video.blurStatus === 'processing' && (
+                               <>
+                                   <Ionicons name="time-sharp" size={14} color="#F59E0B" />
+                                 </>
+                               )}
+                             {video.blurStatus === 'blurred' && (
+                               <>
+                                   <Ionicons name="checkmark-sharp" size={14} color="#10B981" />
+                                 </>
+                               )}
+                             {video.blurStatus === 'failed' && (
+                               <>
+                                   <Ionicons name="alert-circle-sharp" size={14} color="#ff003c" />
+                                 </>
+                               )}
+                           </View>
+                         )}
                       </View>
                       {isOwnProfile && (
                         <TouchableOpacity
@@ -960,7 +992,7 @@ export default function ProfileScreen({ route, navigation }) {
           </View>
         )}
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: 130 }} />
       </ScrollView>
 
       {/* Settings Modal */}
@@ -1331,154 +1363,742 @@ export default function ProfileScreen({ route, navigation }) {
 // STYLESHEET: Gritty Gym Industrial HUD
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050505' },
-  loadingContainer: { justifyContent: 'center', alignItems: 'center' },
-  iconBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 4, backgroundColor: '#121212', borderWidth: 1, borderColor: '#333' },
-  adminActions: { flexDirection: 'row', gap: 8 },
-  adminActionBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 4, backgroundColor: '#161616', borderWidth: 1, borderColor: '#333' },
-  scroll: { flex: 1 },
-  scrollContent: { alignSelf: 'center', width: CONTENT_WIDTH, maxWidth: MAX_CONTENT_WIDTH },
+  container: {
+    flex: 1,
+    backgroundColor: '#050505' // Abyss black
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#161616',
+    borderWidth: 2,
+    borderColor: '#333333'
+  },
+  adminActions: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  adminActionBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#161616',
+    borderWidth: 2,
+    borderColor: '#333333'
+  },
+  scroll: {
+    flex: 1
+  },
+  scrollContent: {
+    alignSelf: 'center',
+    width: CONTENT_WIDTH,
+    maxWidth: MAX_CONTENT_WIDTH
+  },
 
-  // Hero Section
-  profileHero: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
-  avatarContainer: { marginBottom: 16 },
-  avatar: { width: 96, height: 96, borderRadius: 4, borderWidth: 2, borderColor: '#333', backgroundColor: '#121212' },
-  avatarPlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  avatarInitials: { fontSize: 32, fontWeight: '900', color: '#666', letterSpacing: 2 },
-  tierBadgeImage: { position: 'absolute', bottom: -6, right: -6, width: 36, height: 36, borderRadius: 4, borderWidth: 2, borderColor: '#050505', backgroundColor: '#121212' },
-  cameraBadge: { position: 'absolute', bottom: -6, left: -6, backgroundColor: '#b91c1c', width: 32, height: 32, borderRadius: 4, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#050505' },
-  userName: { fontSize: 24, fontWeight: '900', color: '#fff', letterSpacing: 1, marginBottom: 4 },
-  userHandle: { fontSize: 12, color: '#888', fontWeight: '800', letterSpacing: 2 },
+  // --- Hero Section ---
+  profileHero: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20
+  },
+  avatarContainer: {
+    marginBottom: 16
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 20, // Smooth armor curve
+    borderWidth: 3,
+    borderColor: '#333333',
+    backgroundColor: '#121212'
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  avatarInitials: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#666666',
+    letterSpacing: 2
+  },
+  tierBadgeImage: {
+    position: 'absolute',
+    bottom: -8,
+    right: -8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: '#050505',
+    backgroundColor: '#121212'
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: -8,
+    left: -8,
+    backgroundColor: '#b91c1c',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#050505'
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 1,
+    marginBottom: 4
+  },
+  userHandle: {
+    fontSize: 11,
+    color: '#888888',
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
 
-  // Bio & Accolades
-  bioSection: { marginTop: 16, paddingHorizontal: 32 },
-  bioText: { fontSize: 12, fontWeight: '800', color: '#888', textAlign: 'center', lineHeight: 18, letterSpacing: 1 },
-  bioPlaceholder: { fontSize: 12, fontWeight: '800', color: '#555', letterSpacing: 1 },
-  accoladesContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 16 },
-  accoladeBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 2, gap: 4, borderWidth: 1, backgroundColor: '#121212' },
-  accoladeText: { fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  // --- Bio & Accolades ---
+  bioSection: {
+    marginTop: 16,
+    paddingHorizontal: 32
+  },
+  bioText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#888888',
+    textAlign: 'center',
+    lineHeight: 18,
+    letterSpacing: 1
+  },
+  bioPlaceholder: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#555555',
+    letterSpacing: 1
+  },
+  accoladesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16
+  },
+  accoladeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 4,
+    borderWidth: 2,
+    backgroundColor: '#121212'
+  },
+  accoladeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
 
-  // Tactical Blocks
+  // --- Tactical Data Blocks ---
   tacticalDataBlock: {
     backgroundColor: '#161616',
     marginHorizontal: 16,
     marginTop: 24,
-    borderRadius: 6,
+    borderRadius: 16, // Smooth armor curve
     padding: 16,
     borderTopWidth: 2,
-    borderTopColor: '#333',
+    borderTopColor: '#333333',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
 
-  // HUD Progress Panel
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  tierInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  progressTierImage: { width: 40, height: 40 },
-  tierName: { fontSize: 16, fontWeight: '900', letterSpacing: 1 },
-  tierPoints: { fontSize: 10, color: '#888', fontWeight: '800', marginTop: 2, letterSpacing: 1 },
-  nextTierLabel: { fontSize: 10, color: '#666', fontWeight: '800', letterSpacing: 1.5 },
-  maxTierLabel: { fontSize: 10, color: '#D4AF37', fontWeight: '900', letterSpacing: 1.5 },
-  hudProgressTrackOuter: { borderWidth: 1, borderColor: '#2A2A2A', padding: 3, borderRadius: 4, backgroundColor: '#0a0a0a' },
-  hudProgressTrackInner: { height: 6, backgroundColor: '#161616', borderRadius: 2, overflow: 'hidden' },
-  hudProgressFill: { height: '100%', borderRadius: 2 },
-
-  // Stats Matrix
-  statsMatrix: { flexDirection: 'row', marginTop: 16, padding: 16 },
-  statItem: { flex: 1, alignItems: 'center' },
-  statVal: { fontSize: 24, fontWeight: '900', color: '#fff', marginBottom: 4, letterSpacing: -0.5 },
-  streakRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  statLabel: { fontSize: 10, fontWeight: '800', color: '#666', letterSpacing: 1.5 },
-  statDivider: { width: 1, height: 32, backgroundColor: '#2A2A2A' },
-
-  // Info Grid
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, marginTop: 16, gap: 12, justifyContent: 'space-between' },
-  infoCard: { 
-    width: IS_WIDE_SCREEN ? '48%' : (CONTENT_WIDTH - 44) / 2, 
-    minWidth: 150, 
-    backgroundColor: '#161616', 
-    padding: 12, 
-    borderRadius: 6, 
-    borderTopWidth: 2, 
-    borderTopColor: '#333', 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+  // --- HUD Progress Panel ---
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
   },
-  infoIconContainer: { width: 36, height: 36, borderRadius: 4, backgroundColor: '#121212', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: '#2A2A2A' },
-  infoContent: { flex: 1 },
-  infoLabel: { fontSize: 9, fontWeight: '800', color: '#666', marginBottom: 2, letterSpacing: 1.5 },
-  infoValue: { fontSize: 13, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
+  tierInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  progressTierImage: {
+    width: 44,
+    height: 44
+  },
+  tierName: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  tierPoints: {
+    fontSize: 10,
+    color: '#888888',
+    fontWeight: '800',
+    marginTop: 2,
+    letterSpacing: 1
+  },
+  nextTierLabel: {
+    fontSize: 10,
+    color: '#666666',
+    fontWeight: '800',
+    letterSpacing: 1.5
+  },
+  maxTierLabel: {
+    fontSize: 10,
+    color: '#D4AF37',
+    fontWeight: '900',
+    letterSpacing: 1.5
+  },
+  // HUD Nested Progress Track (Armor > Slot > Fill)
+  hudProgressTrackOuter: {
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    padding: 3,
+    borderRadius: 12,
+    backgroundColor: '#0a0a0a'
+  },
+  hudProgressTrackInner: {
+    height: 6,
+    backgroundColor: '#161616',
+    borderRadius: 999,
+    overflow: 'hidden'
+  },
+  hudProgressFill: {
+    height: '100%',
+    borderRadius: 999
+  },
 
-  // Evidence Log (Videos)
-  videosSection: { paddingHorizontal: 16, marginTop: 32 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, alignItems: 'center' },
-  sectionTitle: { fontSize: 14, fontWeight: '900', color: '#555', letterSpacing: 2 },
-  sectionCount: { fontSize: 12, fontWeight: '900', color: '#b91c1c', letterSpacing: 1 },
-  videosGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6, justifyContent: 'flex-start' },
-  videoCard: { width: IS_WIDE_SCREEN ? '31%' : (CONTENT_WIDTH - 32 - 24) / 3, minWidth: 100, maxWidth: 140, marginHorizontal: 4, marginBottom: 16 },
-  videoThumbnail: { aspectRatio: 1, backgroundColor: '#121212', borderRadius: 4, overflow: 'hidden', marginBottom: 8, borderWidth: 1, borderColor: '#333' },
-  videoThumbnailImage: { width: '100%', height: '100%' },
-  videoThumbnailFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  videoOverlay: { position: 'absolute', top: 4, left: 4 },
-  videoStatus: { backgroundColor: 'rgba(5,5,5,0.8)', padding: 4, borderRadius: 2, borderWidth: 1, borderColor: '#333' },
-  videoDeleteButton: { position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(5,5,5,0.8)', padding: 6, borderRadius: 2, borderWidth: 1, borderColor: '#333' },
-  videoExercise: { fontSize: 10, fontWeight: '900', color: '#ddd', marginBottom: 2, letterSpacing: 0.5 },
-  videoMeta: { fontSize: 9, fontWeight: '800', color: '#666', letterSpacing: 1 },
+  // --- Stats Matrix ---
+  statsMatrix: {
+    flexDirection: 'row',
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 16
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center'
+  },
+  statVal: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#ffffff',
+    marginBottom: 4,
+    letterSpacing: -0.5
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#666666',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#333333'
+  },
 
-  // Settings & Selection Modals (Brutalist Sheets)
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(5,5,5,0.9)', justifyContent: 'flex-end', alignItems: 'center' },
-  brutalistSheet: { backgroundColor: '#121212', borderTopWidth: 2, borderTopColor: '#333', padding: 24, maxHeight: '80%', width: IS_WIDE_SCREEN ? MAX_CONTENT_WIDTH : '100%', maxWidth: MAX_CONTENT_WIDTH },
-  settingsScroll: { flexGrow: 0 },
-  sheetHandle: { width: 40, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginBottom: 24 },
-  sheetTitle: { fontSize: 12, fontWeight: '900', color: '#666', marginBottom: 16, letterSpacing: 2 },
-  settingItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a', gap: 16 },
-  settingText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 1 },
-  settingTextWrap: { flex: 1 },
-  settingSubText: { fontSize: 10, fontWeight: '800', color: '#666', marginTop: 4, letterSpacing: 1 },
-  inviteCodesList: { borderBottomWidth: 1, borderBottomColor: '#1a1a1a', paddingBottom: 12 },
-  inviteCodeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
-  inviteCodeMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  inviteCodeText: { fontSize: 14, fontWeight: '900', color: '#fff', letterSpacing: 2 },
-  inviteCodeStatus: { fontSize: 10, color: '#10B981', fontWeight: '900', letterSpacing: 1.5 },
-  inviteCodeStatusUsed: { color: '#666' },
-  inviteShareButton: { padding: 8, borderRadius: 4, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333' },
-  inviteEmptyText: { color: '#666', fontSize: 10, fontWeight: '800', paddingVertical: 8, letterSpacing: 1 },
-  selectionItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
-  selectionText: { fontSize: 14, fontWeight: '800', color: '#666', letterSpacing: 1 },
-  selectionTextActive: { color: '#fff' },
+  // --- Info Grid (Tactical Cards) ---
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    marginTop: 16,
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  infoCard: {
+    width: IS_WIDE_SCREEN ? '48%' : (CONTENT_WIDTH - 44) / 2,
+    minWidth: 150,
+    backgroundColor: '#161616',
+    padding: 14,
+    borderRadius: 16, // Smooth armor curve
+    borderTopWidth: 2,
+    borderTopColor: '#333333',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  infoIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12, // Smooth curve
+    backgroundColor: '#121212',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#333333'
+  },
+  infoContent: {
+    flex: 1
+  },
+  infoLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#666666',
+    marginBottom: 2,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 0.5
+  },
 
-  // Edit Profile / Password Modals
-  editModalContainer: { flex: 1, backgroundColor: '#050505', alignItems: 'center' },
-  editModalContent: { width: IS_WIDE_SCREEN ? MAX_CONTENT_WIDTH : '100%', maxWidth: MAX_CONTENT_WIDTH, flex: 1 },
-  editModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 2, borderBottomColor: '#1a1a1a', backgroundColor: '#0a0a0a' },
-  editModalTitle: { fontSize: 14, fontWeight: '900', color: '#fff', letterSpacing: 2 },
-  editModalCancelText: { color: '#666', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-  editModalSaveText: { color: '#b91c1c', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
-  editModalScroll: { flex: 1, padding: 16 },
-  formCard: { marginBottom: 24, backgroundColor: '#121212', padding: 16, borderRadius: 6, borderTopWidth: 2, borderTopColor: '#333' },
-  cardLabel: { fontSize: 12, fontWeight: '900', color: '#666', marginBottom: 16, letterSpacing: 2 },
-  inputGroup: { marginBottom: 16 },
-  inputLabel: { fontSize: 10, fontWeight: '800', color: '#888', marginBottom: 8, letterSpacing: 1.5 },
-  modernInput: { backgroundColor: '#1a1a1a', borderRadius: 4, borderWidth: 1, borderColor: '#333', padding: 16, color: '#fff', fontSize: 14, fontWeight: '800', letterSpacing: 1 },
-  textArea: { minHeight: 100, textAlignVertical: 'top' },
-  statsRow: { flexDirection: 'row', gap: 16 },
-  statInputWrap: { flex: 1 },
-  statInputLabel: { fontSize: 10, fontWeight: '800', color: '#888', marginBottom: 8, letterSpacing: 1.5 },
-  statInput: { backgroundColor: '#1a1a1a', borderRadius: 4, borderWidth: 1, borderColor: '#333', padding: 16, color: '#fff', fontSize: 14, fontWeight: '800', textAlign: 'center', letterSpacing: 1 },
+  // --- Evidence Log (Videos) ---
+  videosSection: {
+    paddingHorizontal: 16,
+    marginTop: 32
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    alignItems: 'center'
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#555555',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  sectionCount: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#b91c1c',
+    letterSpacing: 1
+  },
+  videosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+    justifyContent: 'flex-start'
+  },
+  videoCard: {
+    width: IS_WIDE_SCREEN ? '31%' : (CONTENT_WIDTH - 32 - 24) / 3,
+    minWidth: 100,
+    maxWidth: 140,
+    marginHorizontal: 4,
+    marginBottom: 16
+  },
+  videoThumbnail: {
+    aspectRatio: 1,
+    backgroundColor: '#121212',
+    borderRadius: 12, // Smooth curve
+    overflow: 'hidden',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#333333'
+  },
+  videoThumbnailImage: {
+    width: '100%',
+    height: '100%'
+  },
+  videoThumbnailFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 6,
+    left: 6
+  },
+  videoStatus: {
+    backgroundColor: 'rgba(5, 5, 5, 0.85)',
+    padding: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333333'
+  },
+  videoDeleteButton: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(5, 5, 5, 0.85)',
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ff003c'
+  },
+  videoExercise: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#f5f5f5',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  videoMeta: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#666666',
+    letterSpacing: 1
+  },
 
-  // Video Player Modal
-  videoModalContainer: { flex: 1, backgroundColor: '#000', justifyContent: 'center' },
-  videoModalClose: { position: 'absolute', top: 50, right: 20, zIndex: 10, backgroundColor: 'rgba(20,20,20,0.8)', padding: 8, borderRadius: 4, borderWidth: 1, borderColor: '#333' },
-  fullScreenVideo: { width: '100%', height: '100%' },
+  // --- Settings & Selection Modals (Brutalist Sheets) ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 5, 5, 0.92)',
+    justifyContent: 'flex-end',
+    alignItems: 'center'
+  },
+  brutalistSheet: {
+    backgroundColor: '#121212',
+    borderTopWidth: 3,
+    borderTopColor: '#333333',
+    padding: 24,
+    maxHeight: '80%',
+    width: IS_WIDE_SCREEN ? MAX_CONTENT_WIDTH : '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    borderRadius: 20, // Top corners smooth
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  settingsScroll: {
+    flexGrow: 0
+  },
+  sheetHandle: {
+    width: 48,
+    height: 4,
+    backgroundColor: '#333333',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 24
+  },
+  sheetTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#666666',
+    marginBottom: 16,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+    gap: 16
+  },
+  settingText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1
+  },
+  settingTextWrap: {
+    flex: 1
+  },
+  settingSubText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#666666',
+    marginTop: 4,
+    letterSpacing: 1
+  },
+  inviteCodesList: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+    paddingBottom: 12
+  },
+  inviteCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12
+  },
+  inviteCodeMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  inviteCodeText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 2
+  },
+  inviteCodeStatus: {
+    fontSize: 10,
+    color: '#10B981',
+    fontWeight: '900',
+    letterSpacing: 1.5
+  },
+  inviteCodeStatusUsed: {
+    color: '#666666'
+  },
+  inviteShareButton: {
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 2,
+    borderColor: '#333333'
+  },
+  inviteEmptyText: {
+    color: '#666666',
+    fontSize: 10,
+    fontWeight: '800',
+    paddingVertical: 8,
+    letterSpacing: 1
+  },
+  selectionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a'
+  },
+  selectionText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#666666',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  selectionTextActive: {
+    color: '#ffffff'
+  },
 
-  // Error & Information Boxes
-  errorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a0a0a', borderLeftWidth: 4, borderLeftColor: '#ff0000', padding: 12, borderRadius: 4, marginBottom: 16, gap: 8 },
-  errorText: { fontSize: 10, fontWeight: '900', color: '#ff0000', flex: 1, letterSpacing: 1 },
-  passwordInputContainer: { position: 'relative' },
-  eyeIcon: { position: 'absolute', right: 16, top: 16 },
-  infoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#121212', borderWidth: 1, borderColor: '#222', padding: 12, borderRadius: 4, gap: 8, marginTop: 8 },
-  infoText: { fontSize: 10, fontWeight: '800', color: '#666', flex: 1, letterSpacing: 1 },
+  // --- Edit Profile / Password Modals ---
+  editModalContainer: {
+    flex: 1,
+    backgroundColor: '#050505',
+    alignItems: 'center'
+  },
+  editModalContent: {
+    width: IS_WIDE_SCREEN ? MAX_CONTENT_WIDTH : '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    flex: 1
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: '#333333',
+    backgroundColor: '#0a0a0a'
+  },
+  editModalTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  editModalCancelText: {
+    color: '#666666',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1
+  },
+  editModalSaveText: {
+    color: '#b91c1c',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1
+  },
+  editModalScroll: {
+    flex: 1,
+    padding: 16
+  },
+  formCard: {
+    marginBottom: 24,
+    backgroundColor: '#161616',
+    padding: 16,
+    borderRadius: 16,
+    borderTopWidth: 2,
+    borderTopColor: '#333333',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
+  },
+  cardLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#666666',
+    marginBottom: 16,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  inputGroup: {
+    marginBottom: 16
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#888888',
+    marginBottom: 8,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  modernInput: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333333',
+    padding: 16,
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top'
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16
+  },
+  statInputWrap: {
+    flex: 1
+  },
+  statInputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#888888',
+    marginBottom: 8,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  statInput: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333333',
+    padding: 16,
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 0.5
+  },
 
-  // Upload Loading Overlay
-  uploadLoadingOverlay: { flex: 1, backgroundColor: 'rgba(5, 5, 5, 0.9)', justifyContent: 'center', alignItems: 'center' },
-  uploadLoadingCard: { backgroundColor: '#121212', padding: 24, borderRadius: 6, borderWidth: 1, borderColor: '#333', alignItems: 'center', minWidth: 200 },
-  uploadLoadingText: { color: '#fff', fontSize: 12, fontWeight: '900', marginTop: 16, textAlign: 'center', letterSpacing: 1 },
+  // --- Video Player Modal ---
+  videoModalContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center'
+  },
+  videoModalClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(20, 20, 20, 0.85)',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333333'
+  },
+  fullScreenVideo: {
+    width: '100%',
+    height: '100%'
+  },
+
+  // --- Error & Information Boxes ---
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a0a0a',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff0000',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 10
+  },
+  errorText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#ff0000',
+    flex: 1,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  passwordInputContainer: {
+    position: 'relative'
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 16
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#121212',
+    borderWidth: 1,
+    borderColor: '#333333',
+    padding: 14,
+    borderRadius: 12,
+    gap: 10,
+    marginTop: 8
+  },
+  infoText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#666666',
+    flex: 1,
+    letterSpacing: 1
+  },
+
+  // --- Upload Loading Overlay ---
+  uploadLoadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 5, 5, 0.92)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  uploadLoadingCard: {
+    backgroundColor: '#121212',
+    padding: 28,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#333333',
+    alignItems: 'center',
+    minWidth: 220
+  },
+  uploadLoadingText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 16,
+    textAlign: 'center',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
 });

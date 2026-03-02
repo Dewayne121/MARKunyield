@@ -569,8 +569,8 @@ export default function TrainingReportScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="TRAINING REPORT"
-        subtitle="Track & Analyze"
+        title="TRAINING LOG"
+        subtitle="OPERATIONS DATA"
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
         rightAction={
@@ -620,7 +620,7 @@ export default function TrainingReportScreen({ navigation }) {
 
         {/* CALENDAR VIEW */}
         {viewMode === 'calendar' && (
-          <View style={{ paddingHorizontal: 16 }}>
+          <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
             <View style={styles.calendarContainer}>
               <CalendarHeader
                 month={currentMonth}
@@ -637,7 +637,7 @@ export default function TrainingReportScreen({ navigation }) {
                 selectedDate={selectedDate}
                 onDayPress={handleDayPress}
               />
-              <View style={{ height: 16 }} />
+              <View style={{ height: 12 }} />
               <CalendarLegend />
             </View>
 
@@ -741,7 +741,7 @@ export default function TrainingReportScreen({ navigation }) {
 
         {/* LIST VIEW */}
         {viewMode === 'list' && (
-          <View style={{ paddingHorizontal: 16 }}>
+          <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
             
             {/* Progressive Overload Suggestions */}
             <View style={styles.section}>
@@ -908,7 +908,7 @@ export default function TrainingReportScreen({ navigation }) {
           </View>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
 
       {/* Add Personal Log Modal */}
@@ -1075,11 +1075,14 @@ export default function TrainingReportScreen({ navigation }) {
   );
 }
 
+// -------------------------------------------------------------
+// STYLESHEET: Gritty Gym Industrial HUD
+// -------------------------------------------------------------
 function createStyles(theme, skin, insets) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#050505', // bgDeep
+      backgroundColor: '#050505', // Abyss black
     },
     loadingContainer: {
       flex: 1,
@@ -1088,11 +1091,12 @@ function createStyles(theme, skin, insets) {
       backgroundColor: '#050505',
     },
     loadingText: {
-      color: '#666',
+      color: '#666666',
       marginTop: 12,
       fontSize: 12,
-      fontWeight: '700',
-      letterSpacing: 1,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
     },
     headerBtn: {
       width: 40,
@@ -1100,23 +1104,26 @@ function createStyles(theme, skin, insets) {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: '#161616',
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: '#333333',
     },
     scroll: {
       flex: 1,
     },
-    
-    // Stats Container
+
+    // --- Tactical Stats Container (HUD Style) ---
     statsContainer: {
       flexDirection: 'row',
       backgroundColor: '#161616',
-      margin: 16,
+      marginHorizontal: 16,
+      marginTop: 16,
       borderRadius: 16,
       padding: 20,
+      borderTopWidth: 2,
+      borderTopColor: '#333333',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderColor: '#1a1a1a',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
@@ -1125,30 +1132,34 @@ function createStyles(theme, skin, insets) {
       alignItems: 'center',
     },
     statValue: {
-      fontSize: 24,
-      fontWeight: '800',
-      color: '#fff',
+      fontSize: 22,
+      fontWeight: '900',
+      color: '#ffffff',
       marginBottom: 4,
+      letterSpacing: -0.5,
     },
     statLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#888',
-      letterSpacing: 1,
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#666666',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
     },
     statDivider: {
       width: 1,
-      height: 24,
-      backgroundColor: 'rgba(255,255,255,0.1)',
+      height: 28,
+      backgroundColor: '#333333',
     },
 
-    // Calendar
+    // --- Calendar Container (Tactical Panel) ---
     calendarContainer: {
       backgroundColor: '#161616',
-      borderRadius: 16,
+      borderRadius: 20,
       paddingVertical: 16,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderColor: '#1a1a1a',
+      borderTopWidth: 2,
+      borderTopColor: '#333333',
       marginTop: 8,
     },
     daySummaryCard: {
@@ -1159,66 +1170,78 @@ function createStyles(theme, skin, insets) {
       alignItems: 'center',
       justifyContent: 'space-between',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderColor: '#222222',
+      borderLeftWidth: 4,
+      borderLeftColor: theme.primary,
     },
     daySummaryTitle: {
       fontSize: 14,
-      fontWeight: '700',
-      color: '#fff',
+      fontWeight: '900',
+      color: '#ffffff',
       marginBottom: 2,
+      letterSpacing: 0.5,
     },
     daySummaryVolume: {
-      fontSize: 12,
-      color: '#888',
+      fontSize: 11,
+      color: '#888888',
+      fontWeight: '800',
+      letterSpacing: 1,
     },
     arrowBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: 'rgba(255,255,255,0.05)',
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: '#121212',
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#333333',
     },
 
-    // Section Standard Styles
+    // --- Section Headers (HUD Labels) ---
     section: {
-      marginTop: 24,
+      marginTop: 32,
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 12,
+      marginBottom: 16,
       paddingHorizontal: 4,
     },
     sectionTitle: {
       fontSize: 12,
-      fontWeight: '800',
-      color: '#666',
-      letterSpacing: 1,
+      fontWeight: '900',
+      color: '#555555',
+      letterSpacing: 2,
+      textTransform: 'uppercase',
     },
     sortLabel: {
       fontSize: 10,
-      fontWeight: '700',
-      color: '#9b2c2c',
-      letterSpacing: 1,
+      fontWeight: '800',
+      color: '#b91c1c',
+      letterSpacing: 1.5,
       marginRight: 8,
+      textTransform: 'uppercase',
     },
     deleteLink: {
       fontSize: 10,
-      fontWeight: '700',
+      fontWeight: '800',
       color: '#ff003c',
-      letterSpacing: 0.5,
+      letterSpacing: 1,
+      textTransform: 'uppercase',
     },
-    
-    // Cards
+
+    // --- Operation History Cards ---
     card: {
       backgroundColor: '#161616',
       borderRadius: 16,
       padding: 16,
       marginBottom: 12,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderColor: '#222222',
+      borderLeftWidth: 4,
+      borderLeftColor: theme.primary,
     },
     cardHeader: {
       flexDirection: 'row',
@@ -1228,38 +1251,51 @@ function createStyles(theme, skin, insets) {
     },
     cardTitle: {
       fontSize: 15,
-      fontWeight: '700',
-      color: '#fff',
+      fontWeight: '900',
+      color: '#ffffff',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
     },
     cardDate: {
-      fontSize: 11,
-      color: '#666',
+      fontSize: 10,
+      color: '#666666',
       marginTop: 2,
+      fontWeight: '800',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
     },
     badge: {
-      paddingHorizontal: 8,
+      paddingHorizontal: 10,
       paddingVertical: 4,
-      borderRadius: 6,
+      borderRadius: 8,
+      backgroundColor: 'rgba(185, 28, 28, 0.15)',
+      borderWidth: 1,
+      borderColor: 'rgba(185, 28, 28, 0.3)',
     },
     badgeText: {
       fontSize: 10,
       fontWeight: '800',
-      letterSpacing: 0.5,
+      letterSpacing: 1,
+      color: '#b91c1c',
     },
     miniBadge: {
-      backgroundColor: '#222',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
+      backgroundColor: '#1a1a1a',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: '#333333',
     },
     miniBadgeText: {
       fontSize: 8,
-      fontWeight: '700',
-      color: '#888',
+      fontWeight: '800',
+      color: '#888888',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
     },
     cardDivider: {
       height: 1,
-      backgroundColor: 'rgba(255,255,255,0.05)',
+      backgroundColor: '#2A2A2A',
       marginBottom: 12,
     },
     cardRow: {
@@ -1271,31 +1307,40 @@ function createStyles(theme, skin, insets) {
       flex: 1,
     },
     cardStatLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#888',
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#666666',
       marginBottom: 4,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
     },
     cardStatValue: {
       fontSize: 16,
-      fontWeight: '700',
-      color: '#fff',
+      fontWeight: '900',
+      color: '#ffffff',
+      letterSpacing: -0.5,
     },
     unit: {
       fontSize: 11,
-      color: '#666',
-      fontWeight: '600',
+      color: '#666666',
+      fontWeight: '700',
     },
     deleteIconBtn: {
-      padding: 4,
+      padding: 6,
+      backgroundColor: '#1a1a1a',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#333333',
     },
 
-    // List Container (Most Trained)
+    // --- List Container (Most Trained) ---
     listContainer: {
       backgroundColor: '#161616',
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
+      borderColor: '#1a1a1a',
+      borderTopWidth: 2,
+      borderTopColor: '#333333',
       overflow: 'hidden',
     },
     listItem: {
@@ -1303,21 +1348,23 @@ function createStyles(theme, skin, insets) {
       flexDirection: 'row',
       alignItems: 'center',
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.05)',
+      borderBottomColor: '#1a1a1a',
     },
     rankCircle: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: 'rgba(255,255,255,0.05)',
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: '#121212',
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 12,
+      borderWidth: 2,
+      borderColor: '#333333',
     },
     rankText: {
       fontSize: 12,
-      fontWeight: '700',
-      color: '#fff',
+      fontWeight: '900',
+      color: '#ffffff',
     },
     listContent: {
       flex: 1,
@@ -1329,74 +1376,86 @@ function createStyles(theme, skin, insets) {
     },
     listTitle: {
       fontSize: 14,
-      fontWeight: '600',
-      color: '#fff',
+      fontWeight: '800',
+      color: '#ffffff',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
     },
     listValue: {
       fontSize: 12,
-      fontWeight: '700',
-      color: '#888',
+      fontWeight: '800',
+      color: '#888888',
+      letterSpacing: 1,
     },
+    // HUD Progress Track (Nested)
     progressBarBg: {
-      height: 4,
-      backgroundColor: 'rgba(255,255,255,0.05)',
-      borderRadius: 2,
+      height: 6,
+      backgroundColor: '#0a0a0a',
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: '#2A2A2A',
+      padding: 2,
     },
     progressBarFill: {
       height: '100%',
       backgroundColor: theme.primary,
-      borderRadius: 2,
+      borderRadius: 999,
     },
 
-    // Empty States
+    // --- Empty States ---
     emptyCard: {
       backgroundColor: '#161616',
       borderRadius: 16,
-      padding: 32,
+      padding: 40,
       alignItems: 'center',
+      borderTopWidth: 2,
+      borderTopColor: '#333333',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.05)',
-      borderStyle: 'dashed',
+      borderColor: '#1a1a1a',
     },
     emptyText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: '#666',
-      letterSpacing: 1,
+      fontSize: 12,
+      fontWeight: '900',
+      color: '#555555',
+      letterSpacing: 2,
       marginBottom: 4,
+      textTransform: 'uppercase',
     },
     emptySubtext: {
-      fontSize: 12,
-      color: '#444',
+      fontSize: 11,
+      color: '#444444',
+      fontWeight: '800',
+      letterSpacing: 1,
     },
     actionBtn: {
-      marginTop: 16,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      backgroundColor: 'rgba(255,255,255,0.05)',
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
+      marginTop: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      backgroundColor: '#121212',
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.primary,
     },
     actionBtnText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#fff',
-      letterSpacing: 0.5,
+      fontSize: 12,
+      fontWeight: '900',
+      color: '#ffffff',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
     },
 
-    // Modal
+    // --- Modal (Brutalist Panel) ---
     modalOverlay: {
       flex: 1,
       justifyContent: 'center',
-      backgroundColor: 'rgba(0,0,0,0.8)',
+      backgroundColor: 'rgba(5, 5, 5, 0.9)',
       padding: 16,
     },
     modalContent: {
-      backgroundColor: '#1a1a1a',
-      borderRadius: 24,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
+      backgroundColor: '#121212',
+      borderRadius: 20,
+      borderWidth: 2,
+      borderColor: '#333333',
       overflow: 'hidden',
       maxHeight: '80%',
     },
@@ -1405,14 +1464,16 @@ function createStyles(theme, skin, insets) {
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 20,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.05)',
+      borderBottomWidth: 2,
+      borderBottomColor: '#333333',
+      backgroundColor: '#0a0a0a',
     },
     modalTitle: {
       fontSize: 16,
-      fontWeight: '800',
-      color: '#fff',
-      letterSpacing: 1,
+      fontWeight: '900',
+      color: '#ffffff',
+      letterSpacing: 2,
+      textTransform: 'uppercase',
     },
     modalBody: {
       padding: 20,
@@ -1421,81 +1482,92 @@ function createStyles(theme, skin, insets) {
       marginBottom: 20,
     },
     fieldLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#666',
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#666666',
       marginBottom: 12,
-      letterSpacing: 1,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
     },
     row: {
       flexDirection: 'row',
     },
     pillScroll: {
       flexDirection: 'row',
-      marginBottom: -4, // Counteract bottom margin of pills for scrolling
+      marginBottom: -4,
     },
     pill: {
       paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 8,
-      backgroundColor: '#111',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
+      paddingVertical: 12,
+      borderRadius: 12,
+      backgroundColor: '#121212',
+      borderWidth: 2,
+      borderColor: '#333333',
       marginRight: 8,
     },
     pillActive: {
-      backgroundColor: theme.primary,
+      backgroundColor: '#1a0e0e',
       borderColor: theme.primary,
     },
     pillText: {
       fontSize: 11,
-      fontWeight: '700',
-      color: '#666',
+      fontWeight: '800',
+      color: '#666666',
       textTransform: 'uppercase',
+      letterSpacing: 1,
     },
     pillTextActive: {
-      color: '#fff',
+      color: '#ffffff',
     },
     input: {
-      backgroundColor: '#111',
+      backgroundColor: '#0a0a0a',
       borderRadius: 12,
       padding: 16,
       fontSize: 16,
-      fontWeight: '600',
-      color: '#fff',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)',
+      fontWeight: '800',
+      color: '#ffffff',
+      borderWidth: 2,
+      borderColor: '#333333',
+      letterSpacing: 0.5,
     },
     infoBox: {
       flexDirection: 'row',
-      backgroundColor: 'rgba(155, 44, 44, 0.1)',
-      padding: 12,
+      backgroundColor: 'rgba(185, 28, 28, 0.1)',
+      padding: 14,
       borderRadius: 12,
       gap: 12,
       marginTop: 8,
+      borderWidth: 1,
+      borderColor: 'rgba(185, 28, 28, 0.2)',
     },
     infoText: {
       flex: 1,
-      fontSize: 12,
-      color: '#aaa',
+      fontSize: 11,
+      color: '#888888',
       lineHeight: 18,
+      fontWeight: '800',
+      letterSpacing: 0.5,
     },
     modalFooter: {
       padding: 20,
-      borderTopWidth: 1,
-      borderTopColor: 'rgba(255,255,255,0.05)',
+      borderTopWidth: 2,
+      borderTopColor: '#333333',
+      backgroundColor: '#0a0a0a',
     },
     saveBtn: {
       backgroundColor: theme.primary,
       borderRadius: 12,
       paddingVertical: 16,
       alignItems: 'center',
+      borderWidth: 2,
+      borderColor: '#b91c1c',
     },
     saveBtnText: {
       fontSize: 14,
-      fontWeight: '800',
-      color: '#fff',
-      letterSpacing: 1,
+      fontWeight: '900',
+      color: '#ffffff',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
     },
   });
 }

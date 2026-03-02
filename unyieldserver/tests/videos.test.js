@@ -182,6 +182,19 @@ describe('UNYIELD API Tests', () => {
       expect(response.body.data.token).toBeDefined();
     });
 
+    test('POST /api/auth/login should authenticate user by username', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: 'testuser1',
+          password: 'password123',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.token).toBeDefined();
+    });
+
     test('POST /api/auth/login should fail with wrong password', async () => {
       const response = await request(app)
         .post('/api/auth/login')

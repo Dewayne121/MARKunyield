@@ -1,21 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { Button, Card, ProgressBar } from '../components/common';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/colors';
 
 const BR = BorderRadius;
 
+// Countdown Timer Component for Challenges Ending Soon
+const CountdownTimer = ({ endDate }) => {
+  const [timeLeft, setTimeLeft] = useState(null);
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const end = new Date(endDate);
+      const diff = end - now;
+
+      if (diff <= 0) {
+        setTimeLeft({ text: 'ENDED', expired: true });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeLeft({
+        text: `${days}d ${hours}h ${minutes}m ${seconds}s`,
+        days,
+        urgent: diff < 24 * 60 * 60 * 1000 // less than 1 day
+      });
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [endDate]);
+
+  return (
+    <View style={[styles.countdownContainer, timeLeft?.urgent && styles.countdownUrgent]}>
+      <Ionicons name="time" size={14} color={timeLeft?.urgent ? '#ff003c' : '#d4af37'} />
+      <Text style={[styles.countdownText, timeLeft?.urgent && styles.countdownTextUrgent]}>
+        {timeLeft?.text}
+      </Text>
+    </View>
+  );
+};
+
 export default function ChallengeScreen() {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
   const { challenge, userChallenge, toggleChallenge, leaderboard } = useApp();
 
   const getChallengeStatus = () => {
@@ -66,12 +111,47 @@ export default function ChallengeScreen() {
         contentContainerStyle={{ paddingBottom: 80 + insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-          <View style={[styles.headerIconBox, { backgroundColor: `${Colors.primary}15` }]}>
-            <Ionicons name="flag" size={20} color={Colors.primary} />
+        {/* Tactical HUD Header */}
+        <View style={[styles.headerContainer, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.headerTopRow}>
+            <View style={[styles.headerIconBox, { borderColor: theme.primary + '60' }]}>
+              <Ionicons name="flag" size={20} color={theme.primary} />
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.headerTitle}>CHALLENGES</Text>
+              <Text style={styles.headerSubtitle}>
+                {status.text.toUpperCase()} | {getTimeRemaining()}
+              </Text>
+            </View>
+            <View style={styles.headerStatsRow}>
+              <View style={styles.headerStatBlock}>
+                <Text style={styles.headerStatLabel}>ACTIVE</Text>
+                <Text style={[styles.headerStatValue, { color: '#10B981' }]}>1</Text>
+              </View>
+              <View style={styles.headerStatBlock}>
+                <Text style={styles.headerStatLabel}>ATHLETES</Text>
+                <Text style={[styles.headerStatValue, { color: theme.primary }]}>{leaderboard.length}</Text>
+              </View>
+            </View>
           </View>
-          <Text style={styles.title}>Weekly Challenge</Text>
+          {/* Type Toggle Row */}
+          <View style={styles.typeToggleRow}>
+            <TouchableOpacity
+              style={styles.typeButton}
+              onPress={() => {}}
+            >
+              <Text style={styles.typeButtonText}>
+                CORE LIFTS
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.typeButton, styles.typeButtonActive]}
+            >
+              <Text style={[styles.typeButtonText, styles.typeButtonTextActive]}>
+                CHALLENGES
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Status Card */}
@@ -84,10 +164,7 @@ export default function ChallengeScreen() {
           </View>
           <Text style={styles.statusDesc}>{challenge.description}</Text>
 
-          <View style={styles.timerContainer}>
-            <Ionicons name="time" size={16} color={Colors.primary} />
-            <Text style={styles.timerText}>{getTimeRemaining()}</Text>
-          </View>
+          <CountdownTimer endDate={challenge.endDate} />
         </Card>
 
         {/* Join/Progress */}
@@ -176,29 +253,94 @@ const getRankColor = (rank) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#050505',
   },
   scrollView: {
     flex: 1,
   },
-  header: {
+  // --- Tactical HUD Header ---
+  headerContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#121212',
+    backgroundColor: '#0a0a0a',
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    gap: 14,
   },
   headerIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#1a0e0e',
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    ...Typography.h2,
-    color: Colors.text,
-    fontWeight: '700',
+  headerInfo: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  headerSubtitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#666666',
+    letterSpacing: 1.5,
+    marginTop: 2,
+  },
+  headerStatsRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  headerStatBlock: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  headerStatLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#666666',
+    letterSpacing: 1.5,
+  },
+  headerStatValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  typeToggleRow: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 8,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#161616',
+    borderWidth: 2,
+    borderColor: '#1a1a1a',
+    alignItems: 'center',
+  },
+  typeButtonActive: {
+    backgroundColor: 'rgba(155, 44, 44, 0.2)',
+    borderColor: '#9b2c2c',
+  },
+  typeButtonText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#666666',
+    letterSpacing: 1,
+  },
+  typeButtonTextActive: {
+    color: '#ffffff',
   },
   statusCard: {
     marginHorizontal: Spacing.lg,
@@ -243,6 +385,28 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.text,
     fontWeight: '600',
+  },
+  countdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    backgroundColor: Colors.surfaceLight,
+    padding: Spacing.sm,
+    borderRadius: BR.md,
+  },
+  countdownUrgent: {
+    backgroundColor: 'rgba(255, 0, 60, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 0, 60, 0.3)',
+  },
+  countdownText: {
+    ...Typography.body,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  countdownTextUrgent: {
+    color: '#ff003c',
+    fontWeight: '700',
   },
   actionCard: {
     marginHorizontal: Spacing.lg,

@@ -34,19 +34,40 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < MIN_JWT_SECRET_LE
   }
   console.warn(`[SECURITY WARNING] ${message}`);
 }
+const maskDatabaseUrl = (value) => {
+  const input = String(value || '');
+  if (!input) return '(missing)';
+  return input.replace(/\/\/([^:/]+):([^@]+)@/, '//$1:****@');
+};
 
-// Connect to PostgreSQL
-connectDB();
+const assertPrimaryDatabaseConfig = () => {
+  const databaseUrl = String(process.env.DATABASE_URL || '');
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL must be set. PostgreSQL is the primary database.');
+  }
+  if (!databaseUrl.toLowerCase().startsWith('postgresql://')) {
+    throw new Error('DATABASE_URL must point to PostgreSQL. Non-PostgreSQL primary databases are not supported.');
+  }
+  console.log(`[DB] Primary database: PostgreSQL (${maskDatabaseUrl(databaseUrl)})`);
+};
 
-// Initialize scheduled jobs (only in production)
-if (process.env.NODE_ENV === 'production') {
-  const { initializeWeeklyRankDigest } = require('./jobs/weeklyRankDigest');
-  const { initializeChallengeEndingNotifier } = require('./jobs/challengeEndingNotifier');
+const maybeSyncUsersFromMongo = async () => {
+  const { shouldAttemptMongoUserSync, syncMongoUsersToPostgres } = require('./services/userSyncService');
+  if (!shouldAttemptMongoUserSync()) {
+    return;
+  }
 
-  initializeWeeklyRankDigest();
-  initializeChallengeEndingNotifier();
-  console.log('Scheduled jobs initialized');
-}
+  const thresholdRaw = process.env.MONGO_USER_SYNC_THRESHOLD;
+  const threshold = Number.isFinite(Number(thresholdRaw))
+    ? Number(thresholdRaw)
+    : 20;
+
+  const stats = await syncMongoUsersToPostgres({
+    onlyIfPostgresUserCountBelow: threshold,
+    logPrefix: '[STARTUP USER SYNC]',
+  });
+  console.log('[STARTUP USER SYNC] Result:', JSON.stringify(stats));
+};
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -77,6 +98,14 @@ const parseCorsOrigins = () => {
 
 const allowedCorsOrigins = parseCorsOrigins();
 const allowAllCorsInDev = process.env.NODE_ENV !== 'production' && allowedCorsOrigins.length === 0;
+const allowDevTunnelOrigins = process.env.ALLOW_DEV_TUNNEL_ORIGINS !== 'false';
+const allowExpoDevOrigins = process.env.NODE_ENV === 'production'
+  ? process.env.ALLOW_EXPO_DEV === 'true'
+  : process.env.ALLOW_EXPO_DEV !== 'false';
+const configuredAllowedHeaders = (process.env.CORS_ALLOWED_HEADERS || '')
+  .split(',')
+  .map((header) => header.trim())
+  .filter(Boolean);
 if (process.env.NODE_ENV === 'production' && allowedCorsOrigins.length === 0) {
   console.warn('[SECURITY WARNING] CORS_ORIGINS is empty in production. Browser origins will be blocked by default.');
 }
@@ -96,17 +125,33 @@ const corsOriginMatchers = allowedCorsOrigins.map((pattern) => ({
 }));
 
 const isOriginAllowed = (origin) => {
-  // Allow Expo development URLs when explicitly enabled via ALLOW_EXPO_DEV=true
-  // This is opt-in for security - add to Railway environment variables to enable
-  if (process.env.ALLOW_EXPO_DEV === 'true') {
-    // Expo tunnel URLs (exp:// and https:// protocols)
-    if (origin && origin.match(/^(https?|exp):\/\/[a-z0-9-]+\.[a-z0-9-]+\.exp\.direct$/i)) {
+  if (!origin) {
+    return true;
+  }
+
+  // Keep tunnel and localhost development clients working across environments unless disabled.
+  if (allowDevTunnelOrigins) {
+    if (origin.match(/^https?:\/\/localhost(:\d+)?$/i) || origin.match(/^https?:\/\/127\.0\.0\.1(:\d+)?$/i)) {
+      return true;
+    }
+    if (origin.match(/^https:\/\/[a-z0-9-]+\.loca\.lt$/i) || origin.match(/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/i)) {
+      return true;
+    }
+    // Allow ngrok tunnels for remote development
+    if (origin.match(/^https:\/\/[a-z0-9-]+\.ngrok(-free)?\.app$/i) || origin.match(/^https:\/\/[a-z0-9-]+\.ngrok\.io$/i)) {
+      return true;
+    }
+  }
+
+  // Expo dev URLs are allowed by default in non-production, opt-in in production.
+  if (allowExpoDevOrigins) {
+    if (origin.match(/^(https?|exp):\/\/([a-z0-9-]+\.)+exp\.direct$/i)) {
       return true;
     }
   }
 
   // Always allow localhost in non-production for local web development
-  if (process.env.NODE_ENV !== 'production' && origin && origin.match(/^https?:\/\/localhost(:\d+)?$/i)) {
+  if (process.env.NODE_ENV !== 'production' && origin.match(/^https?:\/\/localhost(:\d+)?$/i)) {
     return true;
   }
 
@@ -133,10 +178,6 @@ app.use(helmet({
 const corsOptions = {
   origin(origin, callback) {
     // Native mobile apps and server-to-server calls may not include Origin.
-    if (!origin) {
-      return callback(null, true);
-    }
-
     if (allowAllCorsInDev || isOriginAllowed(origin)) {
       return callback(null, true);
     }
@@ -144,7 +185,7 @@ const corsOptions = {
     return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: configuredAllowedHeaders.length > 0 ? configuredAllowedHeaders : undefined,
   credentials: false,
   maxAge: 86400,
 };
@@ -257,6 +298,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/workouts', workoutRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/challenges', challengeRoutes);
+app.use('/api/core-lifts', require('./routes/coreLifts'));
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/admin', adminRoutes);
@@ -276,14 +318,49 @@ app.use(errorHandler);
 // Start server (skip network bind when running tests)
 const PORT = process.env.PORT || 3000;
 let server = null;
-if (process.env.NODE_ENV !== 'test') {
-  server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`UNYIELDING Server running on http://0.0.0.0:${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Database: PostgreSQL via Prisma`);
-    console.log(`Video uploads enabled`);
-  });
-}
+
+const startServer = async () => {
+  assertPrimaryDatabaseConfig();
+  await connectDB();
+
+  // Keep PostgreSQL auth in sync with legacy Mongo users for local/dev recovery.
+  if (process.env.NODE_ENV === 'development') {
+    try {
+      await maybeSyncUsersFromMongo();
+    } catch (error) {
+      console.warn('[STARTUP USER SYNC] Skipped due to error:', error.message);
+    }
+  }
+
+  // Initialize scheduled jobs only in production.
+  if (process.env.NODE_ENV === 'production') {
+    const { initializeWeeklyRankDigest } = require('./jobs/weeklyRankDigest');
+    const { initializeChallengeEndingNotifier } = require('./jobs/challengeEndingNotifier');
+
+    initializeWeeklyRankDigest();
+    initializeChallengeEndingNotifier();
+    console.log('Scheduled jobs initialized');
+  }
+
+  if (process.env.NODE_ENV !== 'test') {
+    server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`UNYIELDING Server running on http://0.0.0.0:${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log('Database: PostgreSQL via Prisma (primary)');
+      console.log('Video uploads enabled');
+    });
+  }
+};
+
+startServer().catch(async (error) => {
+  console.error('Failed to start server:', error);
+  try {
+    await disconnectDB();
+  } catch (disconnectError) {
+    console.error('Failed to disconnect database after startup error:', disconnectError);
+  }
+  process.exit(1);
+});
 
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {

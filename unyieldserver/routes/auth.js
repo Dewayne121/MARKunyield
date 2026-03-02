@@ -277,22 +277,32 @@ router.post('/invites', authenticate, inviteRateLimiter, asyncHandler(async (req
 
 // POST /api/auth/login - Login user
 router.post('/login', authRateLimiter, asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, username, identifier, password } = req.body;
+  const rawIdentifier = identifier || email || username;
+  const normalizedIdentifier = String(rawIdentifier || '').trim().toLowerCase();
 
-  if (!email || !password) {
-    throw new AppError('Email and password are required', 400);
+  if (!normalizedIdentifier || !password) {
+    throw new AppError('Email or username and password are required', 400);
   }
 
-  const normalizedEmail = String(email).trim().toLowerCase();
-
-  // Find user with password field
+  // Support login by either email or username to match frontend UX.
   const user = await prisma.user.findFirst({
     where: {
-      email: {
-        equals: normalizedEmail,
-        mode: 'insensitive',
-      },
-    },
+      OR: [
+        {
+          email: {
+            equals: normalizedIdentifier,
+            mode: 'insensitive',
+          },
+        },
+        {
+          username: {
+            equals: normalizedIdentifier,
+            mode: 'insensitive',
+          },
+        },
+      ],
+    }
   });
 
   if (!user || !user.password) {

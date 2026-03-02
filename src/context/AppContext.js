@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Asset } from 'expo-asset';
 import { useAuth } from './AuthContext';
 import api from '../services/api';
 import { EXERCISES, EXERCISE_CATEGORIES } from '../constants/exercises';
@@ -19,17 +19,14 @@ const HOODIE_IMAGES = {
 // Preload all hoodie images
 function preloadAssets() {
   const imageSources = Object.values(HOODIE_IMAGES);
-  const uris = imageSources.map(source => Image.resolveAssetSource(source).uri);
-
   return Promise.all(
-    uris.map(uri => {
-      return new Promise((resolve) => {
-        Image.getSize(
-          uri,
-          () => resolve(),
-          () => resolve()
-        );
-      });
+    imageSources.map(async (source) => {
+      try {
+        const asset = Asset.fromModule(source);
+        await asset.downloadAsync();
+      } catch {
+        // Asset preloading is best-effort only.
+      }
     })
   );
 }

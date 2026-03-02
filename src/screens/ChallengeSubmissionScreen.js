@@ -316,7 +316,8 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
 
       const video = await cameraRef.current.recordAsync({
         maxDuration: 60,
-        maxFileSize: 100 * 1024 * 1024,
+        // Backend upload route enforces a 50MB cap; keep client below that.
+        maxFileSize: 45 * 1024 * 1024,
         mute: !micAllowed,
       });
       if (recordingTimerRef.current) {
@@ -456,13 +457,17 @@ export default function ChallengeSubmissionScreen({ navigation, route }) {
         originalVideoUrl: originalVideoUrl, // Original unblurred URL (admin only)
         serverVideoId: finalServerVideoId,
         value,
+        blurFaces: blurFaces, // Pass blur flag to backend
         notes: notes.trim(),
       });
 
       if (response.success) {
+        const message = blurFaces
+          ? 'Entry submitted! Face blur is processing in the background. Check your profile for status.'
+          : 'Your entry is now pending admin approval. XP will be confirmed once verified.';
         showAlert({
           title: 'Entry Submitted',
-          message: 'Your entry is now pending admin approval. XP will be confirmed once verified.',
+          message: message,
           icon: 'success',
           buttons: [{ text: 'Done', style: 'default', onPress: () => navigation.goBack() }]
         });

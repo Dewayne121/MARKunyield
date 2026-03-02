@@ -224,15 +224,39 @@ export async function extractVideoFrames(videoUri, frameCount = 10) {
  * Use this if client-side processing is too limited
  */
 export async function blurVideoServerSide(videoUrl, apiToken) {
-  const response = await fetch('https://unyield-main.onrender.com/api/videos/blur', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiToken}`,
-    },
-    body: JSON.stringify({ videoUrl }),
-  });
+  const normalize = (value) => String(value || '').trim().replace(/\/+$/, '');
+  const primary = normalize(process.env.EXPO_PUBLIC_API_URL) || 'http://localhost:3000';
+  const fallbackCandidates = String(process.env.EXPO_PUBLIC_API_FALLBACK_URL || '')
+    .split(',')
+    .map((value) => normalize(value))
+    .filter(Boolean);
+  const emergency = normalize(process.env.EXPO_PUBLIC_API_EMERGENCY_URL) || 'https://unyield-main.onrender.com';
+  const candidates = [primary, ...fallbackCandidates, emergency]
+    .filter((url, index, arr) => url && arr.indexOf(url) === index);
 
-  const data = await response.json();
-  return data.data?.blurredVideoUrl || videoUrl;
+  let lastError;
+  for (const baseUrl of candidates) {
+    try {
+      const response = await fetch(`${baseUrl}/api/videos/blur`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiToken}`,
+        },
+        body: JSON.stringify({ videoUrl }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Blur request failed (${response.status})`);
+      }
+
+      const data = await response.json();
+      return data.data?.blurredVideoUrl || videoUrl;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Blur request failed');
 }

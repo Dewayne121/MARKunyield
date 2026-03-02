@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 // ============================================
 // API URL CONFIGURATION
@@ -15,19 +16,220 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Local development
 // const API_BASE_URL = 'http://localhost:3000';
 
-// Use environment variable or default to production
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://unyielding-api-production.up.railway.app';
+const LOCAL_API_BASE_URL = 'http://localhost:3000';
+const PRODUCTION_API_BASE_URL = 'https://unyielding-api-production.up.railway.app';
+const EMERGENCY_API_BASE_URL = process.env.EXPO_PUBLIC_API_EMERGENCY_URL || 'https://unyield-main.onrender.com';
+const DEFAULT_API_BASE_URL = (typeof __DEV__ !== 'undefined' && __DEV__)
+  ? LOCAL_API_BASE_URL
+  : PRODUCTION_API_BASE_URL;
+
+// Use environment variable when provided; otherwise default to local API in dev.
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
+const API_FALLBACK_URLS = String(process.env.EXPO_PUBLIC_API_FALLBACK_URL || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+const isWebRuntime = () => typeof window !== 'undefined' && !!window.location;
+const isLocalWebRuntime = () => {
+  if (!isWebRuntime()) {
+    return false;
+  }
+  return /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname || '');
+};
+const isRemoteWebRuntime = () => isWebRuntime() && !isLocalWebRuntime();
+const isNativeRuntime = () => !isWebRuntime();
+
+const isTunnelBaseUrl = (url) => ['.loca.lt', '.trycloudflare.com', '.ngrok-free.app', '.ngrok.app', '.ngrok.io'].some((domain) => url.includes(domain));
+const isLocaltunnelUrl = (url) => url.includes('.loca.lt');
+const normalizeBaseUrl = (url) => String(url || '').trim().replace(/\/+$/, '');
+const isLocalhostHost = (host) => /^(localhost|127\.0\.0\.1|::1|\[::1\])$/i.test(String(host || ''));
+const isPrivateIpv4Host = (host) => {
+  const parts = String(host || '').split('.');
+  if (parts.length !== 4) {
+    return false;
+  }
+  const nums = parts.map((part) => Number(part));
+  if (nums.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
+    return false;
+  }
+  const [a, b] = nums;
+  return a === 10
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 169 && b === 254);
+};
+const isLikelyLanHost = (host) => isPrivateIpv4Host(host) || String(host || '').endsWith('.local');
+const isLocalhostBaseUrl = (url) => {
+  const normalized = normalizeBaseUrl(url);
+  const match = normalized.match(/^https?:\/\/([^/:]+|\[[^\]]+\])(?::\d+)?$/i);
+  if (!match) {
+    return false;
+  }
+  return isLocalhostHost(match[1]);
+};
+const parseHostFromUri = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+  try {
+    const parsed = new URL(raw.includes('://') ? raw : `http://${raw}`);
+    return parsed.hostname || '';
+  } catch {
+    return '';
+  }
+};
+const formatHostForUrl = (host) => (host.includes(':') && !host.startsWith('[') ? `[${host}]` : host);
+const getExpoHostUri = () => {
+  const candidates = [
+    Constants?.expoGoConfig?.debuggerHost,
+    Constants?.manifest2?.extra?.expoClient?.hostUri,
+    Constants?.manifest?.debuggerHost,
+    Constants?.manifest?.hostUri,
+    Constants?.expoConfig?.hostUri,
+  ];
+  return candidates.find((value) => typeof value === 'string' && value.trim()) || '';
+};
+const localApiPort = Number(process.env.EXPO_PUBLIC_LOCAL_API_PORT || 3000);
+const inferredDevHost = parseHostFromUri(getExpoHostUri());
+const LAN_API_BASE_URL = (isNativeRuntime() && inferredDevHost && isLikelyLanHost(inferredDevHost))
+  ? `http://${formatHostForUrl(inferredDevHost)}:${localApiPort}`
+  : '';
+const lower = (value) => String(value || '').toLowerCase();
+const isNetworkLikeError = (error) => {
+  const message = lower(error?.message);
+  return (
+    error?.name === 'AbortError' ||
+    message === 'network request failed' ||
+    message === 'failed to fetch' ||
+    message.includes('timed out') ||
+    message.includes('timeout') ||
+    message.includes('network') ||
+    message.includes('fetch') ||
+    message.includes('cors')
+  );
+};
+const parseJsonSafely = (text) => {
+  if (typeof text !== 'string' || !text.trim()) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+const looksLikeHtml = (text) => /<(!doctype|html|head|body)\b/i.test(String(text || ''));
+const isLikelyTunnelInterference = ({ baseUrl, status, contentType, responseText }) => {
+  if (!isTunnelBaseUrl(baseUrl)) {
+    return false;
+  }
+
+  const tunnelFailureStatus = new Set([401, 403, 408, 429, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526]);
+  if (tunnelFailureStatus.has(status)) {
+    return true;
+  }
+
+  const type = lower(contentType);
+  const text = lower(responseText).slice(0, 500);
+
+  if (type.includes('text/html') || looksLikeHtml(responseText)) {
+    return (
+      text.includes('localtunnel') ||
+      text.includes('trycloudflare') ||
+      text.includes('cloudflare') ||
+      text.includes('tunnel') ||
+      text.includes('captcha') ||
+      text.includes('just a moment')
+    );
+  }
+
+  return false;
+};
+
+// When opening Expo web locally, tunnel URLs are brittle and can trigger CORS-like failures
+// when they expire. Prefer the local API if we are on localhost.
+const RESOLVED_API_BASE_URL = (() => {
+  const normalizedApiBase = normalizeBaseUrl(API_BASE_URL);
+  if (isLocalWebRuntime() && isTunnelBaseUrl(normalizedApiBase)) {
+    return LOCAL_API_BASE_URL;
+  }
+  if (isNativeRuntime() && isLocalhostBaseUrl(normalizedApiBase) && LAN_API_BASE_URL) {
+    return LAN_API_BASE_URL;
+  }
+  return normalizedApiBase;
+})();
+
+const buildApiBaseCandidates = () => {
+  const candidates = [];
+  const pushUnique = (url) => {
+    const normalized = normalizeBaseUrl(url);
+    if (!normalized || candidates.includes(normalized)) {
+      return;
+    }
+
+    // localtunnel commonly blocks browser preflight in Expo web; skip it there.
+    if (isRemoteWebRuntime() && isLocaltunnelUrl(normalized)) {
+      return;
+    }
+    candidates.push(normalized);
+  };
+
+  const shouldPrioritizeLan = (typeof __DEV__ !== 'undefined' && __DEV__)
+    && isNativeRuntime()
+    && !!LAN_API_BASE_URL
+    && (isLocalhostBaseUrl(API_BASE_URL) || isTunnelBaseUrl(API_BASE_URL));
+  if (shouldPrioritizeLan) {
+    pushUnique(LAN_API_BASE_URL);
+  }
+
+  pushUnique(RESOLVED_API_BASE_URL);
+
+  // Local web should always have localhost fallback if a tunnel goes stale.
+  if (isLocalWebRuntime()) {
+    pushUnique(LOCAL_API_BASE_URL);
+  }
+
+  // Expo Go on a phone cannot reach localhost; always keep inferred LAN host as backup.
+  if (isNativeRuntime() && LAN_API_BASE_URL) {
+    pushUnique(LAN_API_BASE_URL);
+  }
+
+  // Last-resort fallback for dead tunnels (can be overridden via EXPO_PUBLIC_API_FALLBACK_URL).
+  API_FALLBACK_URLS.forEach((url) => pushUnique(url));
+
+  // Mobile remote sessions are tunnel-based and can rotate frequently.
+  // Keep at least one non-tunnel emergency endpoint so requests can still route.
+  const hasOnlyTunnels = candidates.length > 0 && candidates.every((url) => isTunnelBaseUrl(url));
+  if (hasOnlyTunnels) {
+    pushUnique(EMERGENCY_API_BASE_URL);
+    pushUnique(PRODUCTION_API_BASE_URL);
+  }
+
+  // Final guard for empty/invalid candidate sets.
+  if (candidates.length === 0) {
+    pushUnique(PRODUCTION_API_BASE_URL);
+    pushUnique(EMERGENCY_API_BASE_URL);
+  }
+  return candidates;
+};
+
+const API_BASE_CANDIDATES = buildApiBaseCandidates();
+console.log('[API] Base URL candidates:', API_BASE_CANDIDATES.join(', '));
 
 const TOKEN_KEY = 'unyield_auth_token';
 
-// Upload timeout in milliseconds
-const UPLOAD_TIMEOUT = 120000; // 2 minutes
+// Upload timeout in milliseconds (tunnel/mobile uploads can exceed 2 minutes).
+const UPLOAD_TIMEOUT = Number(process.env.EXPO_PUBLIC_UPLOAD_TIMEOUT_MS || 600000); // 10 minutes
+const UPLOAD_RETRIES = Number(process.env.EXPO_PUBLIC_UPLOAD_RETRIES || 2);
 const BLUR_TIMEOUT = 300000; // 5 minutes
 
 class ApiService {
   constructor() {
     this.token = null;
     this.rateLimitUntil = 0;
+    this.activeApiBaseUrl = API_BASE_CANDIDATES[0];
   }
 
   async init() {
@@ -80,87 +282,150 @@ class ApiService {
     ]);
   }
 
+  getBaseUrlCandidates() {
+    const prioritized = [];
+    const pushUnique = (url) => {
+      const normalized = normalizeBaseUrl(url);
+      if (!normalized || prioritized.includes(normalized)) {
+        return;
+      }
+      prioritized.push(normalized);
+    };
+
+    pushUnique(this.activeApiBaseUrl);
+    API_BASE_CANDIDATES.forEach((url) => pushUnique(url));
+    return prioritized;
+  }
+
+  markWorkingBaseUrl(baseUrl) {
+    const normalized = normalizeBaseUrl(baseUrl);
+    if (!normalized || this.activeApiBaseUrl === normalized) {
+      return;
+    }
+    this.activeApiBaseUrl = normalized;
+    console.log('[API] Switched active base URL to:', normalized);
+  }
+
   async request(endpoint, options = {}) {
     const token = await this.getToken();
     const timeout = options.timeout || 30000; // 30 second default timeout (increased for cold starts)
     const maxRetries = options.retries ?? 2; // Retry up to 2 times on timeout
 
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
     let lastError;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        await this.waitForRateLimit();
-        // Create abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const baseCandidates = this.getBaseUrlCandidates();
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-          ...options,
-          headers,
-          signal: controller.signal,
-        });
+    for (const baseUrl of baseCandidates) {
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          };
 
-        clearTimeout(timeoutId);
+          // localtunnel can show a password/reminder interstitial unless this header is present
+          if (isLocaltunnelUrl(baseUrl)) {
+            headers['bypass-tunnel-reminder'] = 'true';
+          }
 
-        // Handle non-JSON responses (like 204 No Content)
-        const contentType = response.headers.get('content-type');
-        let data;
-        if (contentType && contentType.includes('application/json')) {
-          data = await response.json();
-        } else {
-          data = { success: response.ok };
-        }
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
 
-        if (response.status === 429) {
-          const retryAfterMs = this.parseRetryAfter(response.headers.get('retry-after')) ?? 2000;
-          const waitMs = Math.max(0, retryAfterMs);
-          this.rateLimitUntil = Math.max(this.rateLimitUntil, Date.now() + waitMs);
-          if (waitMs <= 5000 && attempt < maxRetries) {
-            await this.waitForRateLimit();
+          await this.waitForRateLimit();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+          const response = await fetch(`${baseUrl}${endpoint}`, {
+            ...options,
+            headers,
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          const contentType = response.headers.get('content-type') || '';
+          let data;
+          if (response.status === 204) {
+            data = { success: true };
+          } else if (lower(contentType).includes('application/json')) {
+            data = await response.json();
+          } else {
+            const responseText = await response.text();
+            const parsed = parseJsonSafely(responseText);
+            if (parsed) {
+              data = parsed;
+            } else {
+              if (isLikelyTunnelInterference({
+                baseUrl,
+                status: response.status,
+                contentType,
+                responseText,
+              })) {
+                const tunnelError = new Error('Tunnel gateway response received');
+                tunnelError.retryableTransport = true;
+                throw tunnelError;
+              }
+              data = {
+                success: response.ok,
+                error: response.ok ? 'Unexpected non-JSON response from server' : `Request failed (${response.status})`,
+              };
+            }
+          }
+
+          if (response.status === 429) {
+            const retryAfterMs = this.parseRetryAfter(response.headers.get('retry-after')) ?? 2000;
+            const waitMs = Math.max(0, retryAfterMs);
+            this.rateLimitUntil = Math.max(this.rateLimitUntil, Date.now() + waitMs);
+            if (waitMs <= 5000 && attempt < maxRetries) {
+              await this.waitForRateLimit();
+              continue;
+            }
+            const waitSeconds = Math.max(1, Math.ceil(waitMs / 1000));
+            throw new Error(data.error || data.message || `Too many requests. Please wait ${waitSeconds}s and try again.`);
+          }
+
+          if (!response.ok) {
+            const requestError = new Error(data.error || data.message || `Request failed (${response.status})`);
+            requestError.status = response.status;
+            throw requestError;
+          }
+
+          this.markWorkingBaseUrl(baseUrl);
+          return data;
+        } catch (error) {
+          lastError = error;
+          const retryable = (
+            isNetworkLikeError(error) ||
+            error?.retryableTransport === true ||
+            (typeof error?.status === 'number' && (error.status === 408 || error.status >= 500))
+          );
+
+          if (retryable && attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
             continue;
           }
-          const waitSeconds = Math.max(1, Math.ceil(waitMs / 1000));
-          throw new Error(data.error || data.message || `Too many requests. Please wait ${waitSeconds}s and try again.`);
-        }
 
-        if (!response.ok) {
-          throw new Error(data.error || data.message || 'Request failed');
-        }
+          // Network-like failures move to the next candidate base URL.
+          if (retryable) {
+            break;
+          }
 
-        return data;
-      } catch (error) {
-        lastError = error;
-
-        // Only retry on timeout or network errors, not on server errors
-        const isRetryable = error.name === 'AbortError' ||
-                           error.message === 'Network request failed' ||
-                           error.message.includes('network');
-
-        if (isRetryable && attempt < maxRetries) {
-          // Wait before retrying (exponential backoff: 1s, 2s)
-          await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
-          continue;
+          throw error;
         }
-
-        if (error.name === 'AbortError') {
-          throw new Error('Request timed out. Please check your connection and try again.');
-        }
-        if (error.message === 'Network request failed') {
-          throw new Error('Cannot connect to server. Check your network connection.');
-        }
-        throw error;
       }
     }
 
-    throw lastError;
+    if (lastError?.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    const triedTunnelOnly = baseCandidates.length > 0 && baseCandidates.every((candidate) => isTunnelBaseUrl(candidate));
+    if (triedTunnelOnly) {
+      throw new Error(
+        `Cannot connect to server. Tried: ${baseCandidates.join(', ')}. ` +
+        'Tunnel may be stale. Restart remote session and re-scan the latest Expo QR code.'
+      );
+    }
+    throw new Error(`Cannot connect to server. Tried: ${baseCandidates.join(', ')}`);
   }
 
   // HTTP method helpers (axios-like interface)
@@ -214,10 +479,17 @@ class ApiService {
     return this.request(`/api/auth/check-username/${username}`);
   }
 
-  async login(email, password) {
+  async login(identifier, password) {
+    const normalizedIdentifier = String(identifier || '').trim();
+    const looksLikeEmail = normalizedIdentifier.includes('@');
     const response = await this.request('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        identifier: normalizedIdentifier,
+        email: looksLikeEmail ? normalizedIdentifier : undefined,
+        username: looksLikeEmail ? undefined : normalizedIdentifier,
+        password,
+      }),
     });
     if (response.data?.token) {
       await this.setToken(response.data.token);
@@ -471,10 +743,24 @@ class ApiService {
   }
 
   async registerPushToken(pushToken) {
-    return this.request('/api/notifications/push-token', {
-      method: 'POST',
-      body: JSON.stringify({ pushToken }),
-    });
+    try {
+      return await this.request('/api/notifications/push-token', {
+        method: 'POST',
+        body: JSON.stringify({ pushToken }),
+      });
+    } catch (error) {
+      const message = String(error?.message || '').toLowerCase();
+      // Some fallback environments can be behind an older backend contract.
+      // Treat missing route as non-fatal so login UX is not interrupted.
+      if (message.includes('route not found') || message.includes('404')) {
+        return {
+          success: false,
+          skipped: true,
+          error: 'Push token endpoint unavailable on current backend',
+        };
+      }
+      throw error;
+    }
   }
 
   async getNotificationPreferences() {
@@ -563,30 +849,9 @@ class ApiService {
 
     // Use fetch directly for multipart/form-data
     const token = await this.getToken();
-    console.log('[UPLOAD] Token retrieved, starting fetch to', `${API_BASE_URL}/api/videos/upload`);
-
-    // Create a timeout promise
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Upload timed out. Please check your connection and try again.')), UPLOAD_TIMEOUT);
-    });
-
-    // Race between fetch and timeout
-    const uploadPromise = fetch(`${API_BASE_URL}/api/videos/upload`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        // Don't set Content-Type - let fetch set it with the boundary
-      },
-      body: formData,
-    });
-
-    const uploadResponse = await Promise.race([uploadPromise, timeoutPromise]);
-
-    console.log('[UPLOAD] Response received', {
-      status: uploadResponse.status,
-      statusText: uploadResponse.statusText,
-      ok: uploadResponse.ok
-    });
+    const baseCandidates = this.getBaseUrlCandidates();
+    let lastUploadError = null;
+    const timeoutMessage = 'Upload timed out. Please check your connection and try again.';
 
     // Helper to safely parse JSON
     const safeJsonParse = async (response) => {
@@ -600,15 +865,100 @@ class ApiService {
       }
     };
 
-    if (!uploadResponse.ok) {
-      const errorData = await safeJsonParse(uploadResponse);
-      console.error('[UPLOAD] Upload failed', errorData);
-      throw new Error(errorData.error || errorData.message || 'Upload failed');
+    const uploadOnce = async (baseUrl) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT);
+      try {
+        return await fetch(`${baseUrl}/api/videos/upload`, {
+          method: 'POST',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(isLocaltunnelUrl(baseUrl) ? { 'bypass-tunnel-reminder': 'true' } : {}),
+            // Don't set Content-Type - let fetch set it with the boundary
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          const timeoutError = new Error(timeoutMessage);
+          timeoutError.name = 'AbortError';
+          throw timeoutError;
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    for (const baseUrl of baseCandidates) {
+      for (let attempt = 0; attempt <= UPLOAD_RETRIES; attempt += 1) {
+        try {
+          console.log('[UPLOAD] Starting upload request', {
+            baseUrl,
+            attempt: attempt + 1,
+            maxAttempts: UPLOAD_RETRIES + 1,
+            timeoutMs: UPLOAD_TIMEOUT,
+          });
+
+          const uploadResponse = await uploadOnce(baseUrl);
+
+          console.log('[UPLOAD] Response received', {
+            baseUrl,
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+            ok: uploadResponse.ok
+          });
+
+          if (!uploadResponse.ok) {
+            const errorData = await safeJsonParse(uploadResponse);
+            console.error('[UPLOAD] Upload failed', errorData);
+            const uploadError = new Error(errorData.error || errorData.message || 'Upload failed');
+            uploadError.status = uploadResponse.status;
+            throw uploadError;
+          }
+
+          const result = await safeJsonParse(uploadResponse);
+          this.markWorkingBaseUrl(baseUrl);
+          console.log('[UPLOAD] Upload successful', { result });
+          return result;
+        } catch (error) {
+          lastUploadError = error;
+          const retryable = (
+            isNetworkLikeError(error) ||
+            (typeof error?.status === 'number' && (error.status === 408 || error.status >= 500))
+          );
+
+          if (retryable && attempt < UPLOAD_RETRIES) {
+            const waitMs = (attempt + 1) * 1500;
+            console.warn('[UPLOAD] Attempt failed, retrying...', {
+              baseUrl,
+              attempt: attempt + 1,
+              waitMs,
+              error: error.message,
+            });
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            continue;
+          }
+
+          if (!retryable) {
+            throw error;
+          }
+
+          console.warn('[UPLOAD] Base URL failed after retries, trying next candidate...', {
+            baseUrl,
+            error: error.message,
+          });
+          break;
+        }
+      }
     }
 
-    const result = await safeJsonParse(uploadResponse);
-    console.log('[UPLOAD] Upload successful', { result });
-    return result;
+    if (lastUploadError?.name === 'AbortError') {
+      throw new Error(timeoutMessage);
+    }
+    throw lastUploadError || new Error(`Upload failed for all API endpoints: ${baseCandidates.join(', ')}`);
   }
 
   async submitVideo(videoData) {
@@ -696,6 +1046,35 @@ class ApiService {
     return this.request(`/api/videos/reports/${id}/review`, {
       method: 'POST',
       body: JSON.stringify({ action, reviewNotes, actionTaken }),
+    });
+  }
+
+  // Core Lift Leaderboard endpoints
+  async getCoreLiftLeaderboard(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/api/core-lifts/leaderboard${query ? `?${query}` : ''}`);
+  }
+
+  async submitCoreLift(liftData) {
+    return this.request('/api/core-lifts/submit', {
+      method: 'POST',
+      body: JSON.stringify(liftData),
+    });
+  }
+
+  async getMyCoreLiftRecords() {
+    return this.request('/api/core-lifts/my-records');
+  }
+
+  // Seasonal Challenges endpoints
+  async getSeasonalChallenges(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/api/challenges/seasonal${query ? `?${query}` : ''}`);
+  }
+
+  async refreshChallengeLeaderboard(challengeId) {
+    return this.request(`/api/challenges/${challengeId}/leaderboard-refresh`, {
+      method: 'POST',
     });
   }
 

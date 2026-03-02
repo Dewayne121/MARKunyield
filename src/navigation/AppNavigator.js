@@ -29,6 +29,7 @@ import WorkoutSummaryScreen from '../screens/WorkoutSummaryScreen';
 import TrainingReportScreen from '../screens/TrainingReportScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import CoreLiftLeaderboardScreen from '../screens/CoreLiftLeaderboardScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
@@ -222,7 +223,7 @@ function TabBar({ state, descriptors, navigation }) {
   const tabs = {
     'Base': { icon: 'home', label: 'HOME' },
     'Training': { icon: 'barbell', label: 'TRAIN' },
-    'Compete': { icon: 'skull', label: 'COMPETE' }, 
+    'Compete': { icon: 'trophy', label: 'COMPETE' }, 
     'Leagues': { icon: 'ribbon', label: 'RANKS' },
     'Stats': { icon: 'person', label: 'STATS' },
   };
@@ -314,6 +315,7 @@ function RootNavigator() {
       {/* Challenge Routes */}
       <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="ChallengeSubmission" component={ChallengeSubmissionScreen} options={{ presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="CoreLiftLeaderboard" component={CoreLiftLeaderboardScreen} options={{ presentation: 'card' }} />
 
       {/* Admin Routes */}
       <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ presentation: 'card' }} />
